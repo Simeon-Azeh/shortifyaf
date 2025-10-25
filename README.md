@@ -32,15 +32,26 @@ Many small businesses and individuals across Africa share long, confusing URLs (
    cd backend
    ```
 
-3. Install dependencies  
+3. Create a `.env` file in the backend directory and add your environment variables:  
+   ```env
+   PORT=3000
+   MONGODB_URI=mongodb://localhost:27017/shortifyaf
+   ```
+
+4. Install dependencies  
    ```bash
    npm install
    ```
 
-4. Run the app  
+5. Ensure MongoDB is running locally (or update MONGODB_URI for your setup)
+
+6. Run the app  
    ```bash
    npm run dev
    ```
+
+## API Documentation
+Once the server is running, visit `http://localhost:3000/api-docs` to view the interactive API documentation powered by Swagger UI.
 
 ## Team Members
 Name	Role

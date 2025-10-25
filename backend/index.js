@@ -1,52 +1,57 @@
+require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Swagger definition
+const swaggerOptions = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'ShortifyAF API',
+            version: '1.0.0',
+            description: 'A simple URL shortener API for Africa\'s digital ecosystem',
+        },
+        servers: [
+            {
+                url: `http://localhost:${PORT}`,
+            },
+        ],
+    },
+    apis: ['./routes/*.js'], // paths to files containing OpenAPI definitions
+};
+
+const swaggerSpecs = swaggerJsdoc(swaggerOptions);
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log('Connected to MongoDB');
+}).catch(err => {
+    console.error('MongoDB connection error:', err);
+});
+
 app.use(express.json());
 
-// In-memory storage for URLs
-const urlStore = {};
+// Swagger UI
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
+// Routes
+const urlRoutes = require('./routes/urlRoutes');
+app.use('/', urlRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
     res.send('Welcome to ShortifyAF - A simple URL shortener for Africa');
 });
 
-// POST /shorten - Shorten a URL
-app.post('/shorten', (req, res) => {
-    const { url } = req.body;
-
-    // Basic validation
-    if (!url) {
-        return res.status(400).json({ error: 'URL is required' });
-    }
-
-    try {
-        new URL(url); // Validate URL format
-    } catch (err) {
-        return res.status(400).json({ error: 'Invalid URL format' });
-    }
-
-    // Generate short code
-    const shortCode = Math.random().toString(36).substr(2, 6);
-    urlStore[shortCode] = url;
-
-    const shortUrl = `http://localhost:${PORT}/${shortCode}`;
-    res.json({ shortUrl });
-});
-
-// GET /:shortCode - Redirect to original URL
-app.get('/:shortCode', (req, res) => {
-    const { shortCode } = req.params;
-    const longUrl = urlStore[shortCode];
-
-    if (longUrl) {
-        res.redirect(longUrl);
-    } else {
-        res.status(404).send('Short URL not found');
-    }
-});
-
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
 });

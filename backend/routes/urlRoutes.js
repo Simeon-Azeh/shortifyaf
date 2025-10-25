@@ -74,4 +74,46 @@ router.post('/shorten', urlController.shortenUrl);
  */
 router.get('/:shortId', urlController.redirectUrl);
 
+/**
+ * @swagger
+ * /history:
+ *   get:
+ *     summary: Get URL shortening history
+ *     description: Returns the last 10 shortened URLs with their original and short versions
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved history
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 history:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       shortUrl:
+ *                         type: string
+ *                         example: http://localhost:3000/abc123
+ *                       originalUrl:
+ *                         type: string
+ *                         example: https://example.com/very/long/url
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                         example: 2023-10-25T10:00:00.000Z
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Server error
+ */
+router.get('/history', urlController.getHistory);
+
 module.exports = router;

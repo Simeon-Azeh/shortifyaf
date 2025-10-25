@@ -54,3 +54,22 @@ exports.redirectUrl = async (req, res) => {
         res.status(500).send('Server error');
     }
 };
+
+exports.getHistory = async (req, res) => {
+    try {
+        const urls = await Url.find()
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .select('shortId originalUrl createdAt');
+
+        const history = urls.map(url => ({
+            shortUrl: `http://localhost:${process.env.PORT || 3000}/${url.shortId}`,
+            originalUrl: url.originalUrl,
+            createdAt: url.createdAt
+        }));
+
+        res.json({ history });
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};

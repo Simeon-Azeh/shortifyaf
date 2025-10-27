@@ -188,12 +188,10 @@ shortifyaf/
 │   └── vite.config.ts        # Vite configuration
 ├── .github/
 │   ├── CODEOWNERS            # Code ownership rules
-│   └── workflows/            # CI/CD pipelines (future)
 ├── .gitignore                # Root gitignore
 ├── README.md                 # This file
 ├── LICENSE                   # MIT License
-└── docker-compose.yml        # Docker setup (future)
-```
+
 
 ## Links
 

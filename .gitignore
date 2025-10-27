@@ -1,23 +1,59 @@
-# dependencies
+# Node
 node_modules/
-dist/
-build/
-
-# environment files
-.env
-.env.local
-.env.production
-
-# IDE files
-.vscode/
-.idea/
-
-# logs and artifacts
-*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
+yarn.lock
 
-# OS files
+# Environment
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Logs
+logs
+*.log
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# OS
 .DS_Store
 Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Build
+dist/
+build/
+coverage/
+coverage-final.json
+.nyc_output/
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Mac
+*.DS_Store
+
+# Test / debugging
+/debug/
+tmp/
+temp/
+
+# Frontend (Vite/React)
+dist/
+.vite/
+
+# Misc
+*.local
+*.key

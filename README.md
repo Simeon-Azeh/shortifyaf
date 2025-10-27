@@ -12,8 +12,8 @@ This tool empowers small business owners, content creators, and organizations to
 ## Team Members
 
 - **Simeon Azeh** - Full Stack Developer & Team Lead 
-- **Yvette [Last Name]** - Frontend Developer & UI/UX 
-- **Yusuf [Last Name]** - DevOps Engineer & Documentation Lead
+- **Yvette Kwizera** - Frontend Developer & UI/UX 
+- **Yusuf Molumo** - DevOps Engineer & Documentation Lead
 
 ## Project Overview
 

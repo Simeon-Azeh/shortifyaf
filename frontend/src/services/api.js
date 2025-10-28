@@ -42,4 +42,37 @@ export const getHistory = async () => {
     }
 };
 
+export const getOriginalUrl = async (shortId) => {
+    try {
+        const response = await api.get(`/${shortId}`, {
+            maxRedirects: 0,
+            validateStatus: function (status) {
+                return status >= 200 && status < 400;
+            }
+        });
+
+        // If we get a redirect response, extract the location
+        if (response.status === 302 || response.status === 301) {
+            return { originalUrl: response.headers.location };
+        }
+
+        return response.data;
+    } catch (error) {
+        if (error.response) {
+            if (error.response.status === 404) {
+                throw new Error('Short URL not found');
+            }
+            // Handle redirect manually
+            if (error.response.status === 302 || error.response.status === 301) {
+                return { originalUrl: error.response.headers.location };
+            }
+            throw new Error(error.response.data.error || 'Failed to fetch URL');
+        } else if (error.request) {
+            throw new Error('No response from server. Please check if the backend is running.');
+        } else {
+            throw new Error('Failed to make request');
+        }
+    }
+};
+
 export default api;

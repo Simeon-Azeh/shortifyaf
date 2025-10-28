@@ -47,35 +47,6 @@ router.post('/shorten', urlController.shortenUrl);
 
 /**
  * @swagger
- * /{shortId}:
- *   get:
- *     summary: Redirect to original URL
- *     description: Redirects to the original URL based on the short ID
- *     parameters:
- *       - in: path
- *         name: shortId
- *         required: true
- *         schema:
- *           type: string
- *         description: The short ID of the URL
- *         example: abc123
- *     responses:
- *       302:
- *         description: Redirect to original URL
- *       404:
- *         description: Short URL not found
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
- *               example: Short URL not found
- *       500:
- *         description: Server error
- */
-router.get('/:shortId', urlController.redirectUrl);
-
-/**
- * @swagger
  * /history:
  *   get:
  *     summary: Get URL shortening history
@@ -115,5 +86,34 @@ router.get('/:shortId', urlController.redirectUrl);
  *                   example: Server error
  */
 router.get('/history', urlController.getHistory);
+
+/**
+ * @swagger
+ * /{shortId}:
+ *   get:
+ *     summary: Redirect to original URL
+ *     description: Redirects to the original URL based on the short ID
+ *     parameters:
+ *       - in: path
+ *         name: shortId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The short ID of the URL
+ *         example: abc123
+ *     responses:
+ *       302:
+ *         description: Redirect to original URL
+ *       404:
+ *         description: Short URL not found
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *               example: Short URL not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:shortId', urlController.redirectUrl);
 
 module.exports = router;

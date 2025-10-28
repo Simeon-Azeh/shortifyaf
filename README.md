@@ -48,13 +48,18 @@ Developers can integrate ShortifyAF into their own applications using our well-d
 ### Feature 5: Mobile-Responsive Interface
 Fully optimized for mobile devices, ensuring African users accessing via smartphones have the best possible experience with fast load times and intuitive navigation.
 
+### Feature 6: Smart Redirect System
+When users visit a shortened URL, they see a professional loading screen with a countdown before being redirected to the original destination, creating a seamless and trustworthy experience.
+
 ## Technology Stack
 
-- **Frontend**: React 18 + Vite + TypeScript
+- **Frontend**: React 19 + Vite + React Router
 - **Backend**: Node.js with Express.js framework
-- **Database**: MongoDB (for production deployments)
-- **API Documentation**: Swagger UI / OpenAPI
+- **Database**: MongoDB with Mongoose ODM
+- **API Documentation**: Swagger UI / OpenAPI 3.0
 - **Styling**: CSS3 with mobile-first responsive design
+- **Icons**: React Icons (Feather Icons)
+- **HTTP Client**: Axios
 - **Version Control**: Git & GitHub
 - **Future DevOps**: Docker, CI/CD pipelines, cloud deployment
 

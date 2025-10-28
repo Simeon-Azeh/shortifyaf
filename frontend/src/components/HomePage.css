@@ -226,6 +226,10 @@
 .feature-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
+    color: #667eea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .feature h3 {

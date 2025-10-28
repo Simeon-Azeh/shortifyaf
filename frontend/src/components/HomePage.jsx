@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { shortenUrl } from '../services/api';
+import { FiLink, FiCopy, FiCheck, FiAlertCircle, FiZap, FiLock, FiSmartphone } from 'react-icons/fi';
 import './HomePage.css';
 
 const HomePage = () => {
@@ -93,9 +94,7 @@ const HomePage = () => {
 
                     {error && (
                         <div className="error-message">
-                            <svg className="error-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                            <FiAlertCircle className="error-icon" />
                             {error}
                         </div>
                     )}
@@ -115,16 +114,12 @@ const HomePage = () => {
                                 <button onClick={handleCopy} className="copy-btn">
                                     {copied ? (
                                         <>
-                                            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                            <FiCheck className="icon" />
                                             Copied!
                                         </>
                                     ) : (
                                         <>
-                                            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                            </svg>
+                                            <FiCopy className="icon" />
                                             Copy
                                         </>
                                     )}
@@ -136,17 +131,23 @@ const HomePage = () => {
 
                 <div className="features">
                     <div className="feature">
-                        <div className="feature-icon">⚡</div>
+                        <div className="feature-icon">
+                            <FiZap />
+                        </div>
                         <h3>Fast & Simple</h3>
                         <p>Shorten URLs in seconds</p>
                     </div>
                     <div className="feature">
-                        <div className="feature-icon">🔒</div>
+                        <div className="feature-icon">
+                            <FiLock />
+                        </div>
                         <h3>Secure</h3>
                         <p>Your links are safe with us</p>
                     </div>
                     <div className="feature">
-                        <div className="feature-icon">📱</div>
+                        <div className="feature-icon">
+                            <FiSmartphone />
+                        </div>
                         <h3>Mobile-Friendly</h3>
                         <p>Works on all devices</p>
                     </div>

@@ -5,7 +5,7 @@
 
 In Africa's rapidly growing digital economy, small businesses, entrepreneurs, and social media marketers face a common challenge: sharing long, complex URLs that look unprofessional and are difficult to remember. Whether it's WhatsApp business links, mobile money payment URLs, or product pages, these lengthy links create friction in digital communication and commerce.
 
-ShortifyAF addresses this problem by providing a free, easy-to-use URL shortening service tailored for Africa's mobile-first internet users. With many Africans accessing the internet primarily through mobile devices with limited data and screen space, short, clean URLs are not just convenient—they're essential for effective digital communication and business growth.
+ShortifyAF addresses this problem by providing a free, easy-to-use URL shortening service tailored for Africa's mobile-first internet users. With many Africans accessing the internet primarily through mobile devices with limited data and screen space, short, clean URLs are not just convenient; they're essential for effective digital communication and business growth.
 
 This tool empowers small business owners, content creators, and organizations to present professional, memorable links that build trust and improve user experience across WhatsApp, Facebook, Instagram, and other platforms popular in African markets.
 
@@ -19,13 +19,13 @@ This tool empowers small business owners, content creators, and organizations to
 
 ShortifyAF is a modern URL shortening service designed specifically for African entrepreneurs, marketers, and digital users. The application allows users to transform lengthy, unwieldy URLs into short, memorable links that are perfect for sharing across social media, messaging apps, and digital marketing campaigns.
 
-Built with a mobile-first approach, ShortifyAF understands the unique challenges of Africa's digital landscape—limited data plans, mobile-dominant internet usage, and the need for simple, accessible tools. Our platform provides instant URL shortening without requiring user registration, making it accessible to anyone with an internet connection.
+Built with a mobile-first approach, ShortifyAF understands the unique challenges of Africa's digital landscape-limited data plans, mobile-dominant internet usage, and the need for simple, accessible tools. Our platform provides instant URL shortening without requiring user registration, making it accessible to anyone with an internet connection.
 
-As we grow, ShortifyAF will incorporate analytics features to help businesses track link performance, understand their audience, and optimize their digital marketing efforts—all while remaining free and accessible to users across the African continent.
+As we grow, ShortifyAF will incorporate analytics features to help businesses track link performance, understand their audience, and optimize their digital marketing efforts—all while remaining free and accessible to users across the African continent. Another future update will be the use of ShortifyAF in momo payments.
 
 ## Target Users
 
-- **Small Business Owners**: Entrepreneurs selling products via WhatsApp, Facebook, or Instagram who need professional-looking links
+- **Small Business Owners**: Entrepreneurs selling products via WhatsApp, Facebook, or Instagram who need professional looking links
 - **Social Media Marketers**: Digital marketers managing campaigns across multiple platforms who need trackable, branded links
 - **Students & Organizations**: Educational institutions and NGOs sharing resources, forms, and announcements
 - **Content Creators**: Bloggers, YouTubers, and influencers sharing content across various channels
@@ -34,7 +34,7 @@ As we grow, ShortifyAF will incorporate analytics features to help businesses tr
 ## Core Features
 
 ### Feature 1: Instant URL Shortening
-Users can paste any long URL and instantly receive a shortened version. No registration required, no waiting—just immediate results optimized for mobile sharing.
+Users can paste any long URL and instantly receive a shortened version. No registration required, no waiting; just immediate results optimized for mobile sharing.
 
 ### Feature 2: Easy Copy-to-Clipboard
 One-click copying of shortened URLs makes sharing effortless. Designed for mobile users who need quick, friction-free URL sharing on messaging apps.
@@ -201,7 +201,7 @@ shortifyaf/
 ## Links
 
 - **GitHub Repository**: [https://github.com/Simeon-Azeh/shortifyaf](https://github.com/Simeon-Azeh/shortifyaf)
-- **Project Board**: [View on GitHub Projects](https://github.com/users/Simeon-Azeh/projects/[PROJECT_NUMBER])
+- **Project Board**: [View on GitHub Projects](https://github.com/users/Simeon-Azeh/projects/[1])
 - **API Documentation**: http://localhost:3000/api-docs (when running locally)
 - **Issues & Bug Reports**: [GitHub Issues](https://github.com/Simeon-Azeh/shortifyaf/issues)
 

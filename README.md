@@ -61,7 +61,105 @@ When users visit a shortened URL, they see a professional loading screen with a 
 - **Icons**: React Icons (Feather Icons)
 - **HTTP Client**: Axios
 - **Version Control**: Git & GitHub
-- **Future DevOps**: Docker, CI/CD pipelines, cloud deployment
+- **CI/CD**: GitHub Actions
+- **Containerization**: Docker
+- **Code Quality**: ESLint, automated testing
+
+## CI/CD Pipeline
+
+ShortifyAF uses GitHub Actions for continuous integration and deployment, ensuring code quality and reliability.
+
+### Pipeline Triggers
+- **Push to any branch** (except `main`) - Runs full CI suite
+- **Pull Request targeting `main`** - Runs full CI suite and blocks merge if failed
+
+### CI Jobs
+
+#### Backend CI
+- **Node.js Setup**: Uses Node.js 18 with npm caching for faster builds
+- **Dependency Installation**: `npm ci` for clean, reproducible installs
+- **Code Linting**: ESLint checks for code quality and consistency
+- **Testing**: Automated test suite validates functionality
+- **Docker Build**: Ensures containerization works correctly
+
+#### Frontend CI
+- **Node.js Setup**: Uses Node.js 18 with npm caching
+- **Dependency Installation**: `npm ci` for frontend packages
+- **Code Linting**: ESLint ensures React code quality
+- **Build Verification**: Confirms production build succeeds
+
+### Quality Gates
+The pipeline enforces strict quality standards:
+-  **Linting failures** prevent deployment
+-  **Test failures** block merges
+-  **Build failures** stop the pipeline
+
+### Local Development Commands
+
+#### Backend Scripts
+```bash
+cd backend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Run linting
+npm run lint
+
+# Run tests
+npm test
+
+# Start production server
+npm start
+```
+
+#### Frontend Scripts
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Run linting
+npm run lint
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Docker Deployment
+
+ShortifyAF includes Docker support for easy deployment and scaling.
+
+### Building the Backend Image
+```bash
+cd backend
+docker build -t shortifyaf-backend .
+```
+
+### Running with Docker
+```bash
+# Run the backend container
+docker run -p 3000:3000 \
+  -e MONGODB_URI=mongodb://your-mongo-uri \
+  -e PORT=3000 \
+  shortifyaf-backend
+```
+
+### Docker Image Features
+- **Alpine Linux**: Lightweight base image
+- **Non-root user**: Enhanced security
+- **Health checks**: Automatic container monitoring
+- **Production optimized**: Minimal attack surface
 
 ## Getting Started
 
@@ -172,30 +270,70 @@ Once both servers are running:
 ```
 shortifyaf/
 ├── backend/
-│   ├── src/
-│   │   ├── controllers/      # Request handlers
-│   │   ├── models/            # Database models
-│   │   ├── routes/            # API routes
-│   │   ├── middleware/        # Custom middleware
-│   │   └── utils/             # Helper functions
-│   ├── .env                   # Environment variables (not in repo)
-│   ├── .gitignore            # Backend ignored files
-│   ├── package.json          # Backend dependencies
-│   └── server.js             # Entry point
+│   ├── controllers/          # Request handlers (urlController.js)
+│   ├── models/               # Database models (Url.js)
+│   ├── routes/               # API routes (urlRoutes.js)
+│   ├── tests/                # Test files (test-basic.js)
+│   ├── .env                  # Environment variables (not in repo)
+│   ├── .eslintrc.js          # ESLint configuration
+│   ├── .gitignore           # Backend ignored files
+│   ├── Dockerfile           # Docker containerization
+│   ├── healthcheck.js       # Container health monitoring
+│   ├── index.js             # Main application entry point
+│   └── package.json         # Backend dependencies and scripts
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── pages/            # Page components
-│   │   ├── services/         # API service calls
-│   │   └── styles/           # CSS files
-│   ├── public/               # Static assets
-│   ├── package.json          # Frontend dependencies
-│   └── vite.config.ts        # Vite configuration
+│   │   ├── components/      # React components (HomePage, RedirectPage)
+│   │   ├── services/        # API service calls (api.js)
+│   │   └── ...
+│   ├── public/              # Static assets
+│   ├── package.json         # Frontend dependencies
+│   └── vite.config.js       # Vite configuration
 ├── .github/
-│   ├── CODEOWNERS            # Code ownership rules
+│   ├── workflows/           # GitHub Actions CI/CD
+│   │   └── ci.yml          # CI pipeline configuration
+│   └── CODEOWNERS           # Code ownership rules
 ├── .gitignore                # Root gitignore
 ├── README.md                 # This file
 ├── LICENSE                   # MIT License
+```
+
+## Contributing
+
+We welcome contributions to ShortifyAF! Please follow these guidelines:
+
+### Development Workflow
+
+1. **Fork the repository** and create a feature branch
+2. **Run tests locally** before pushing:
+   ```bash
+   cd backend && npm test && npm run lint
+   cd ../frontend && npm run lint && npm run build
+   ```
+3. **Commit your changes** with clear, descriptive messages
+4. **Push to your branch** and create a Pull Request
+
+### CI/CD Requirements
+
+All pull requests must pass the automated CI pipeline, which includes:
+-  **Code Linting**: ESLint checks for both frontend and backend
+-  **Automated Testing**: Backend functionality tests
+-  **Build Verification**: Frontend production build
+-  **Docker Build**: Backend containerization verification
+
+The pipeline runs automatically on:
+- Pushes to any branch (except `main`)
+- Pull requests targeting `main`
+
+### Code Quality Standards
+
+- Follow ESLint rules (no errors allowed)
+- Write tests for new features
+- Ensure all tests pass
+- Keep Docker builds working
+- Maintain mobile-responsive design
+
+## Links
 
 
 ## Links

@@ -16,7 +16,7 @@ exports.shortenUrl = async (req, res) => {
 
     try {
         // Generate short ID
-        const shortId = Math.random().toString(36).substr(2, 6);
+        let shortId = Math.random().toString(36).substr(2, 6);
 
         // Check if shortId already exists (unlikely but possible)
         let existingUrl = await Url.findOne({ shortId });

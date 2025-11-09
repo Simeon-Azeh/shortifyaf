@@ -14,7 +14,7 @@ const HomePage = () => {
         try {
             new URL(url);
             return true;
-        } catch (err) {
+        } catch {
             return false;
         }
     };
@@ -56,7 +56,7 @@ const HomePage = () => {
             await navigator.clipboard.writeText(shortUrl);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch {
             setError('Failed to copy to clipboard');
         }
     };

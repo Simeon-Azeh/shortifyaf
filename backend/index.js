@@ -58,7 +58,13 @@ app.get('/', (req, res) => {
     res.send('Welcome to ShortifyAF - A simple URL shortener for Africa');
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
-});
+// Only start the server if this file is run directly (not when required as a module)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+    });
+}
+
+// Export the app for testing
+module.exports = app;

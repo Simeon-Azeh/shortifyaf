@@ -411,8 +411,12 @@ The pipeline runs automatically on:
 - Keep Docker builds working
 - Maintain mobile-responsive design
 
-## Links
+## Continuous Integration Evidence
+Branch protection is enabled on main, enforcing:
 
+-Required status checks
+-Required pull requests
+-CI must pass before merging
 
 ## Links
 

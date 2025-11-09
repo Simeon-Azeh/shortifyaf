@@ -419,9 +419,7 @@ The pipeline runs automatically on:
 -CI must pass before merging
 
 2. Successful run 1 Evidence 
-![alt text](image.png)
-![alt text](image-1.png)
-
+https://drive.google.com/drive/folders/1Kup6rYuLLz97UgfrNji4YV89TJNCSTI6?usp=drive_link
 3. Successful run 2 Evidence
 
 

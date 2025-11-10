@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7-jammy
+    container_name: shortifyaf-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: shortifyaf
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - shortifyaf-network
+    ports:
+      - "27017:27017"
+
+  # Backend API Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shortifyaf-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      MONGODB_URI: mongodb://mongodb:27017/shortifyaf
+      FRONTEND_URL: http://localhost:3000
+    depends_on:
+      - mongodb
+    networks:
+      - shortifyaf-network
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3001
+    container_name: shortifyaf-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - shortifyaf-network
+    ports:
+      - "3000:80"
+
+volumes:
+  mongodb_data:
+
+networks:
+  shortifyaf-network:
+    driver: bridge

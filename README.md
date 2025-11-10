@@ -412,11 +412,7 @@ The pipeline runs automatically on:
 - Maintain mobile-responsive design
 
 ## Continuous Integration Evidence
-1. Branch protection is enabled on main, enforcing:
-
--Required status checks
--Required pull requests
--CI must pass before merging
+1. Branch protection evidence
 
 2. Successful run 1 Evidence 
 https://drive.google.com/drive/folders/1Kup6rYuLLz97UgfrNji4YV89TJNCSTI6?usp=drive_link
@@ -427,6 +423,8 @@ https://drive.google.com/drive/folders/1cboGti7kN4puJIAECQpjm_OXrTcFfEfz?usp=dri
 4. Succesful run 3 evidence
 https://drive.google.com/drive/folders/1BMmA_my9xdMgwC4FtpEsvSyTcKqD5zIi?usp=drive_link
 
+5. Intentional CI failure evidence
+https://drive.google.com/drive/folders/1AH6eUqNzHsAf3bECjdpjK92wrrvpDCon?usp=drive_link
 
 ## Links
 

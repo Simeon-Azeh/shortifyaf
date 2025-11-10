@@ -4,6 +4,9 @@ const http = require('http');
 async function testServer() {
     console.log(' Running basic server tests...');
 
+    throw new Error("Intentional CI failure for evidence");
+
+
     try {
         // Test 1: Check if we can require the main module without errors
         console.log('Test 1: Module loading...');

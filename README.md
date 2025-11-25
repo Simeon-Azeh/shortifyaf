@@ -372,7 +372,7 @@ shortifyaf/
 ├── docker-compose.yml        # Multi-container orchestration
 ├── .dockerignore            # Docker build exclusions
 ├── .gitignore                # Root gitignore
-├── README.md                 # This file
+├── README.md                 # This readme documentation file
 ├── LICENSE                   # MIT License
 ```
 

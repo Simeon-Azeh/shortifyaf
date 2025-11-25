@@ -28,7 +28,7 @@ resource "azurerm_network_security_group" "app_nsg" {
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "3000"
+    destination_port_range     = "80"
     source_address_prefix      = "0.0.0.0/0"
     destination_address_prefix = "*"
   }
@@ -209,7 +209,7 @@ resource "azurerm_lb_probe" "http" {
   name                = "http-probe"
   loadbalancer_id     = azurerm_lb.app_lb[0].id
   protocol            = "Http"
-  port                = 3000
+  port                = 80
   request_path        = "/"
 }
 
@@ -219,7 +219,7 @@ resource "azurerm_lb_rule" "http" {
   loadbalancer_id     = azurerm_lb.app_lb[0].id
   protocol            = "Tcp"
   frontend_port       = 80
-  backend_port        = 3000
+  backend_port        = 80
   frontend_ip_configuration_name = "public"
   backend_address_pool_ids      = [azurerm_lb_backend_address_pool.app_backend[0].id]
   probe_id                       = azurerm_lb_probe.http[0].id

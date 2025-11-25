@@ -75,7 +75,7 @@ const HomePage = () => {
             const successful = document.execCommand('copy');
             document.body.removeChild(textarea);
             return successful;
-        } catch (err) {
+        } catch {
             return false;
         }
     };
@@ -100,7 +100,7 @@ const HomePage = () => {
             } else {
                 setError('Failed to copy to clipboard — your browser may block clipboard usage from this page. Try copying manually.');
             }
-        } catch (err) {
+        } catch {
             // If permission is denied or clipboard API rejects
             setError('Failed to copy to clipboard — permission denied. Try copying manually.');
         }

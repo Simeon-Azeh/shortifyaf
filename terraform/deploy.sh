@@ -5,7 +5,7 @@
 
 set -e
 
-echo "🚀 Starting ShortifyAF deployment..."
+echo " Starting ShortifyAF deployment..."
 
 # Check if terraform is initialized
 if [ ! -d ".terraform" ]; then
@@ -14,7 +14,7 @@ if [ ! -d ".terraform" ]; then
 fi
 
 # Get outputs from Terraform
-echo "📋 Getting infrastructure details..."
+echo " Getting infrastructure details..."
 BASTION_IP=$(terraform output -raw bastion_public_ip)
 APP_IP=$(terraform output -raw app_private_ip)
 BACKEND_REPO=$(terraform output -raw ecr_backend_repository_url)

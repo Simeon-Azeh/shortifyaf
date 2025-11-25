@@ -51,13 +51,58 @@ const HomePage = () => {
         }
     };
 
-    const handleCopy = async () => {
+    // Copy to clipboard using navigator.clipboard when available
+    // Fallback to a temporary textarea + document.execCommand('copy') for insecure contexts
+    const fallbackCopy = (text) => {
         try {
-            await navigator.clipboard.writeText(shortUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            // Avoid scrolling to bottom
+            textarea.style.position = 'fixed';
+            textarea.style.top = 0;
+            textarea.style.left = 0;
+            textarea.style.width = '2em';
+            textarea.style.height = '2em';
+            textarea.style.padding = 0;
+            textarea.style.border = 'none';
+            textarea.style.outline = 'none';
+            textarea.style.boxShadow = 'none';
+            textarea.style.background = 'transparent';
+            document.body.appendChild(textarea);
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            return successful;
         } catch {
-            setError('Failed to copy to clipboard');
+            return false;
+        }
+    };
+
+    const handleCopy = async () => {
+        if (!shortUrl) return;
+
+        try {
+            // Try modern clipboard API first
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                await navigator.clipboard.writeText(shortUrl);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+                return;
+            }
+
+            // Fallback for insecure contexts or older browsers
+            const ok = fallbackCopy(shortUrl);
+            if (ok) {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } else {
+                setError('Failed to copy to clipboard — your browser may block clipboard usage from this page. Try copying manually.');
+            }
+        } catch {
+            // If permission is denied or clipboard API rejects
+            setError('Failed to copy to clipboard — permission denied. Try copying manually.');
         }
     };
 

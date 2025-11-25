@@ -51,7 +51,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Routes
 const urlRoutes = require('./routes/urlRoutes');
-app.use('/', urlRoutes);
+app.use('/api', urlRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

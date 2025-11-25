@@ -428,10 +428,14 @@ https://drive.google.com/drive/folders/1BMmA_my9xdMgwC4FtpEsvSyTcKqD5zIi?usp=dri
 https://drive.google.com/drive/folders/1AH6eUqNzHsAf3bECjdpjK92wrrvpDCon?usp=drive_link
 
 ## Links
-
 - **GitHub Repository**: [https://github.com/Simeon-Azeh/shortifyaf](https://github.com/Simeon-Azeh/shortifyaf)
+- **Deployed (ALB) URL**: http://shortifyaf-alb-1452321967.us-east-1.elb.amazonaws.com
+- **Terraform deployment guide**: ./terraform/README.md
 - **Project Board**: [View on GitHub Projects](https://github.com/users/Simeon-Azeh/projects/[1])
 - **API Documentation**: http://localhost:3000/api-docs (when running locally)
+ - **API Documentation**:
+    - Local: http://localhost:3001/api-docs (when running backend locally)
+    - Deployed (ALB): http://shortifyaf-alb-1452321967.us-east-1.elb.amazonaws.com/api-docs
 - **Issues & Bug Reports**: [GitHub Issues](https://github.com/Simeon-Azeh/shortifyaf/issues)
 
 ## License

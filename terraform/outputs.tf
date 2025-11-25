@@ -1,49 +1,60 @@
-output "vpc_id" {
-  description = "ID of the VPC"
-  value       = aws_vpc.main.id
+output "vnet_id" {
+  description = "ID of the VNet"
+  value       = module.vnet.vnet_id
 }
 
 output "public_subnet_ids" {
   description = "IDs of the public subnets"
-  value       = aws_subnet.public[*].id
+  value       = module.vnet.public_subnet_ids
 }
 
 output "private_subnet_ids" {
   description = "IDs of the private subnets"
-  value       = aws_subnet.private[*].id
+  value       = module.vnet.private_subnet_ids
 }
 
 output "bastion_public_ip" {
   description = "Public IP of the bastion host"
-  value       = aws_instance.bastion.public_ip
+  value       = module.compute.bastion_public_ip
 }
 
 output "app_private_ip" {
   description = "Private IP of the application server"
-  value       = aws_instance.app.private_ip
+  value       = module.compute.app_private_ip
 }
 
-output "ecr_backend_repository_url" {
-  description = "URL of the backend ECR repository"
-  value       = aws_ecr_repository.backend.repository_url
+output "app_public_ip" {
+  description = "Public IP of the application server (only set when make_app_public = true)"
+  value       = module.compute.app_public_ip
 }
 
-output "ecr_frontend_repository_url" {
-  description = "URL of the frontend ECR repository"
-  value       = aws_ecr_repository.frontend.repository_url
+output "acr_login_server" {
+  description = "Login server for Azure Container Registry"
+  value       = module.acr.acr_login_server
 }
 
-output "alb_dns_name" {
-  description = "DNS name of the Application Load Balancer"
-  value       = aws_lb.main.dns_name
+/* duplicates removed */
+
+output "app_dns_name" {
+  description = "Public DNS or IP to reach your application (if app made public)"
+  value       = module.compute.app_public_ip
 }
 
-output "bastion_security_group_id" {
-  description = "ID of the bastion security group"
-  value       = aws_security_group.bastion.id
+output "postgres_fqdn" {
+  description = "FQDN for the PostgreSQL flexible server"
+  value       = module.postgres.postgres_fqdn
 }
 
-output "app_security_group_id" {
-  description = "ID of the app security group"
-  value       = aws_security_group.app.id
+output "bastion_nsg_id" {
+  description = "Network security group ID for bastion"
+  value       = module.compute.bastion_nsg_id
 }
+
+output "app_nsg_id" {
+  description = "Network security group ID for app VM"
+  value       = module.compute.app_nsg_id
+}
+
+/* DocumentDB outputs removed — using MongoDB Atlas (external) */
+
+/* DocumentDB outputs removed — using MongoDB Atlas (external) */

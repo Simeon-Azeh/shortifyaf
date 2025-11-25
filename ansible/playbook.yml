@@ -1,0 +1,58 @@
+---
+- name: Configure App VM
+  hosts: app_servers
+  become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - python3
+          - python3-pip
+          - build-essential
+          - nodejs
+          - npm
+        state: present
+
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: "0755"
+
+    - name: Create symbolic link for docker-compose
+      file:
+        src: /usr/local/bin/docker-compose
+        dest: /usr/bin/docker-compose
+        state: link
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Add azureuser to docker group
+      user:
+        name: azureuser
+        groups: docker
+        append: yes
+
+    - name: Create app directory
+      file:
+        path: /home/azureuser/app
+        state: directory
+        owner: azureuser
+        group: azureuser
+        mode: "0755"
+
+    # Add more tasks as needed for your application deployment

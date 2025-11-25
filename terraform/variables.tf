@@ -1,7 +1,7 @@
-variable "aws_region" {
-  description = "AWS region to deploy resources"
+variable "azure_location" {
+  description = "Azure region to deploy resources"
   type        = string
-  default     = "us-east-1"
+  default     = "spaincentral"
 }
 
 variable "project_name" {
@@ -37,29 +37,43 @@ variable "private_subnet_cidrs" {
 variable "availability_zones" {
   description = "Availability zones"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = ["eu-north-1a", "eu-north-1b"]
 }
 
-variable "instance_type" {
-  description = "EC2 instance type for application server"
+variable "vm_size" {
+  description = "Azure VM size for application server"
   type        = string
-  default     = "t3.micro"
+  default     = "Standard_B1s"
 }
 
-variable "bastion_instance_type" {
-  description = "EC2 instance type for bastion host"
+variable "bastion_vm_size" {
+  description = "Azure VM size for bastion host"
   type        = string
-  default     = "t3.micro"
+  default     = "Standard_B1s"
 }
 
-variable "key_name" {
-  description = "Name of the SSH key pair"
+variable "admin_ssh_public_key" {
+  description = "Public SSH key to inject for admin user on VMs (raw public key text). Provide the public key text or the path in tfvars."
   type        = string
-  default     = "shortifyaf-key"
+  default     = ""
 }
 
 variable "allowed_ssh_cidr" {
-  description = "CIDR blocks allowed to SSH into bastion"
+  description = "CIDR blocks allowed to SSH into bastion (restrict to your IP for security)"
   type        = list(string)
-  default     = ["0.0.0.0/0"] # Change this to your IP for security
+  default     = ["0.0.0.0/0"]
 }
+
+variable "resource_group_name" {
+  description = "Resource Group to use (if exists). If empty, Terraform creates one named shortifyaf-rg"
+  type        = string
+  default     = "shortifyaf-rg"
+}
+
+variable "create_resource_group" {
+  description = "Whether to create the resource_group or treat resource_group_name as existing"
+  type        = bool
+  default     = false
+}
+
+/* Using MongoDB Atlas by default; DocumentDB option removed. */

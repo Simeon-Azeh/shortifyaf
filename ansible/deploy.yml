@@ -1,9 +1,9 @@
 ---
-- name: Deploy ShortifyAF on Azure
+- name: Deploy ShortifyAF container on Azure VM
   hosts: appserver
   become: yes
   vars:
-    app_dir: "/home/{{ ansible_user }}/shortifyaf"
+    app_dir: "{{ lookup('env','ANSIBLE_PULL_PATH') | default('/home/azureuser/shortifyaf') }}"
     docker_compose_file: "{{ app_dir }}/docker-compose.yml"
     image_uri: "{{ image_uri }}"
 
@@ -29,23 +29,13 @@
                 - "80:3000"
               environment:
                 - NODE_ENV=production
-                - PORT=3000
-              healthcheck:
-                test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
-                interval: 30s
-                timeout: 10s
-                retries: 3
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+              volumes:
+                - ./data:/app/data
       notify: Restart compose
 
   handlers:
     - name: Restart compose
-      become: yes
-      become_user: "{{ ansible_user }}"
       shell: |
         cd {{ app_dir }} || exit 1
         docker compose pull web || true
         docker compose up -d --remove-orphans
-      args:
-        executable: /bin/bash

@@ -4,13 +4,13 @@ const { Pool } = require('pg');
 const connectionString = process.env.DATABASE_URL;
 
 const pool = new Pool({
-  connectionString,
-  // SSL is required for Azure Postgres by default; rely on connection string param sslmode=require
+    connectionString,
+    // SSL is required for Azure Postgres by default; rely on connection string param sslmode=require
 });
 
 async function init() {
-  // Create urls table if it doesn't exist
-  const sql = `
+    // Create urls table if it doesn't exist
+    const sql = `
     CREATE TABLE IF NOT EXISTS urls (
       id SERIAL PRIMARY KEY,
       short_id VARCHAR(32) UNIQUE NOT NULL,
@@ -19,11 +19,11 @@ async function init() {
     );
   `;
 
-  await pool.query(sql);
+    await pool.query(sql);
 }
 
 module.exports = {
-  query: (text, params) => pool.query(text, params),
-  init,
-  pool,
+    query: (text, params) => pool.query(text, params),
+    init,
+    pool,
 };

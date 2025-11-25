@@ -6,36 +6,3 @@
     app_dir: "{{ lookup('env','ANSIBLE_PULL_PATH') | default('/home/azureuser/shortifyaf') }}"
     docker_compose_file: "{{ app_dir }}/docker-compose.yml"
     image_uri: "{{ image_uri }}"
-
-  tasks:
-    - name: Ensure app directory exists
-      file:
-        path: "{{ app_dir }}"
-        state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0755'
-
-    - name: Write docker-compose.yml
-      copy:
-        dest: "{{ docker_compose_file }}"
-        content: |
-          version: "3.8"
-          services:
-            web:
-              image: {{ image_uri }}
-              restart: unless-stopped
-              ports:
-                - "80:3000"
-              environment:
-                - NODE_ENV=production
-              volumes:
-                - ./data:/app/data
-      notify: Restart compose
-
-  handlers:
-    - name: Restart compose
-      shell: |
-        cd {{ app_dir }} || exit 1
-        docker compose pull web || true
-        docker compose up -d --remove-orphans

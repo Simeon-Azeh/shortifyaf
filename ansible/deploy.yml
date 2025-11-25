@@ -1,0 +1,51 @@
+---
+- name: Deploy ShortifyAF on Azure
+  hosts: appserver
+  become: yes
+  vars:
+    app_dir: "/home/{{ ansible_user }}/shortifyaf"
+    docker_compose_file: "{{ app_dir }}/docker-compose.yml"
+    image_uri: "{{ image_uri }}"
+
+  tasks:
+    - name: Ensure app directory exists
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Write docker-compose.yml
+      copy:
+        dest: "{{ docker_compose_file }}"
+        content: |
+          version: "3.8"
+          services:
+            web:
+              image: {{ image_uri }}
+              restart: unless-stopped
+              ports:
+                - "80:3000"
+              environment:
+                - NODE_ENV=production
+                - PORT=3000
+              healthcheck:
+                test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+      notify: Restart compose
+
+  handlers:
+    - name: Restart compose
+      become: yes
+      become_user: "{{ ansible_user }}"
+      shell: |
+        cd {{ app_dir }} || exit 1
+        docker compose pull web || true
+        docker compose up -d --remove-orphans
+      args:
+        executable: /bin/bash

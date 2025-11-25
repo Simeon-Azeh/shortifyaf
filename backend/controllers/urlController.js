@@ -16,7 +16,7 @@ exports.shortenUrl = async (req, res) => {
 
     try {
         // Generate short ID
-        const shortId = Math.random().toString(36).substr(2, 6);
+        let shortId = Math.random().toString(36).substr(2, 6);
 
         // Check if shortId already exists (unlikely but possible)
         let existingUrl = await Url.findOne({ shortId });
@@ -32,7 +32,10 @@ exports.shortenUrl = async (req, res) => {
         });
         await newUrl.save();
 
-        const shortUrl = `http://localhost:${process.env.PORT || 3000}/${shortId}`;
+        // Build the public short URL using FRONTEND_URL when available.
+        // FRONTEND_URL is set in production (terraform) to the ALB domain; locally it falls back to the request host.
+        const base = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+        const shortUrl = `${base.replace(/\/$/, '')}/${shortId}`;
         res.json({ shortUrl });
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
@@ -62,8 +65,9 @@ exports.getHistory = async (req, res) => {
             .limit(10)
             .select('shortId originalUrl createdAt');
 
+        const base = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
         const history = urls.map(url => ({
-            shortUrl: `http://localhost:${process.env.PORT || 3000}/${url.shortId}`,
+            shortUrl: `${base.replace(/\/$/, '')}/${url.shortId}`,
             originalUrl: url.originalUrl,
             createdAt: url.createdAt
         }));

@@ -48,15 +48,193 @@ Developers can integrate ShortifyAF into their own applications using our well-d
 ### Feature 5: Mobile-Responsive Interface
 Fully optimized for mobile devices, ensuring African users accessing via smartphones have the best possible experience with fast load times and intuitive navigation.
 
+### Feature 6: Smart Redirect System
+When users visit a shortened URL, they see a professional loading screen with a countdown before being redirected to the original destination, creating a seamless and trustworthy experience.
+
 ## Technology Stack
 
-- **Frontend**: React 18 + Vite + TypeScript
+- **Frontend**: React 19 + Vite + React Router (Node.js 20+ required)
 - **Backend**: Node.js with Express.js framework
-- **Database**: MongoDB (for production deployments)
-- **API Documentation**: Swagger UI / OpenAPI
+- **Database**: MongoDB with Mongoose ODM
+- **API Documentation**: Swagger UI / OpenAPI 3.0
 - **Styling**: CSS3 with mobile-first responsive design
+- **Icons**: React Icons (Feather Icons)
+- **HTTP Client**: Axios
 - **Version Control**: Git & GitHub
-- **Future DevOps**: Docker, CI/CD pipelines, cloud deployment
+- **CI/CD**: GitHub Actions
+- **Containerization**: Docker & Docker Compose
+- **Code Quality**: ESLint, automated testing
+
+## CI/CD Pipeline
+
+ShortifyAF uses GitHub Actions for continuous integration and deployment, ensuring code quality and reliability.
+
+### Pipeline Triggers
+- **Push to any branch** (except `main`) - Runs full CI suite
+- **Pull Request targeting `main`** - Runs full CI suite and blocks merge if failed
+
+### CI Jobs
+
+#### Backend CI
+- **Node.js Setup**: Uses Node.js 18 with npm caching for faster builds
+- **Dependency Installation**: `npm ci` for clean, reproducible installs
+- **Code Linting**: ESLint checks for code quality and consistency
+- **Testing**: Automated test suite validates functionality
+- **Docker Build**: Ensures containerization works correctly
+
+#### Frontend CI
+- **Node.js Setup**: Uses Node.js 20 with npm caching (required for Vite)
+- **Dependency Installation**: `npm ci` for frontend packages
+- **Code Linting**: ESLint ensures React code quality
+- **Build Verification**: Confirms production build succeeds
+- **Docker Build**: Ensures containerization works correctly
+
+### Quality Gates
+The pipeline enforces strict quality standards:
+-  **Linting failures** prevent deployment
+-  **Test failures** block merges
+-  **Build failures** stop the pipeline
+
+### Local Development Commands
+
+#### Backend Scripts
+```bash
+cd backend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Run linting
+npm run lint
+
+# Run tests
+npm test
+
+# Start production server
+npm start
+```
+
+#### Frontend Scripts
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Run linting
+npm run lint
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Docker Deployment
+
+ShortifyAF is fully containerized using Docker and Docker Compose for easy deployment and development.
+
+### Prerequisites for Docker
+
+- **Docker** (v20.0 or higher) - [Download here](https://www.docker.com/get-started)
+- **Docker Compose** (v2.0 or higher) - Included with Docker Desktop
+
+### Quick Start with Docker Compose
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/Simeon-Azeh/shortifyaf.git
+   cd shortifyaf
+   ```
+
+2. **Start all services**:
+   ```bash
+   docker-compose up --build
+   ```
+
+3. **Access the application**:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:3001
+   - API Documentation: http://localhost:3001/api-docs
+
+### Docker Services
+
+- **mongodb**: MongoDB database with persistent data volume
+- **backend**: Node.js Express API server with health checks
+- **frontend**: React application served via Nginx
+
+### Environment Variables
+
+The docker-compose.yml includes default environment variables. For production, create a `.env` file in the root directory:
+
+```env
+# Backend Configuration
+PORT=3001
+MONGODB_URI=mongodb://mongodb:27017/shortifyaf
+FRONTEND_URL=http://localhost:3000
+
+# Frontend Configuration
+VITE_API_URL=http://localhost:3001
+```
+
+### Docker Commands
+
+```bash
+# Start services in background
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild and restart
+docker-compose up --build --force-recreate
+
+# Clean up (removes volumes)
+docker-compose down -v
+```
+
+### Individual Service Builds
+
+#### Backend
+```bash
+docker build -t shortifyaf-backend .
+docker run -p 3001:3001 -e MONGODB_URI=mongodb://host.docker.internal:27017/shortifyaf shortifyaf-backend
+```
+
+#### Frontend
+```bash
+cd frontend
+docker build -t shortifyaf-frontend .
+docker run -p 3000:80 shortifyaf-frontend
+```
+
+### Production Deployment
+
+For production deployment:
+
+1. Update environment variables for your domain
+2. Use a reverse proxy (nginx) for SSL termination
+3. Configure MongoDB authentication
+4. Set up proper logging and monitoring
+5. Use Docker secrets for sensitive data
+
+### Docker Image Features
+
+- **Multi-stage builds**: Optimized for production with minimal image size
+- **Non-root users**: Enhanced security for all services
+- **Health checks**: Automatic container monitoring and restart
+- **Persistent volumes**: Database data survives container restarts
+- **Networking**: Isolated network for inter-service communication
 
 ## Getting Started
 
@@ -64,7 +242,7 @@ Fully optimized for mobile devices, ensuring African users accessing via smartph
 
 Before running ShortifyAF, ensure you have the following installed:
 
-- **Node.js** (v16.0 or higher) - [Download here](https://nodejs.org/)
+- **Node.js** (v20.0 or higher for frontend, v16.0 or higher for backend) - [Download here](https://nodejs.org/)
 - **npm** (comes with Node.js) or **yarn**
 - **MongoDB** (v4.4 or higher) - [Download here](https://www.mongodb.com/try/download/community)
 - **Git** - [Download here](https://git-scm.com/downloads)
@@ -167,37 +345,97 @@ Once both servers are running:
 ```
 shortifyaf/
 ├── backend/
-│   ├── src/
-│   │   ├── controllers/      # Request handlers
-│   │   ├── models/            # Database models
-│   │   ├── routes/            # API routes
-│   │   ├── middleware/        # Custom middleware
-│   │   └── utils/             # Helper functions
-│   ├── .env                   # Environment variables (not in repo)
-│   ├── .gitignore            # Backend ignored files
-│   ├── package.json          # Backend dependencies
-│   └── server.js             # Entry point
+│   ├── controllers/          # Request handlers (urlController.js)
+│   ├── models/               # Database models (Url.js)
+│   ├── routes/               # API routes (urlRoutes.js)
+│   ├── tests/                # Test files (test-basic.js)
+│   ├── .env                  # Environment variables (not in repo)
+│   ├── .eslintrc.js          # ESLint configuration
+│   ├── .gitignore           # Backend ignored files
+│   ├── healthcheck.js       # Container health monitoring
+│   ├── index.js             # Main application entry point
+│   └── package.json         # Backend dependencies and scripts
 ├── frontend/
 │   ├── src/
-│   │   ├── components/       # React components
-│   │   ├── pages/            # Page components
-│   │   ├── services/         # API service calls
-│   │   └── styles/           # CSS files
-│   ├── public/               # Static assets
-│   ├── package.json          # Frontend dependencies
-│   └── vite.config.ts        # Vite configuration
+│   │   ├── components/      # React components (HomePage, RedirectPage)
+│   │   ├── services/        # API service calls (api.js)
+│   │   └── ...
+│   ├── public/              # Static assets
+│   ├── Dockerfile           # Frontend containerization
+│   ├── package.json         # Frontend dependencies
+│   └── vite.config.js       # Vite configuration
 ├── .github/
-│   ├── CODEOWNERS            # Code ownership rules
+│   ├── workflows/           # GitHub Actions CI/CD
+│   │   └── ci.yml          # CI pipeline configuration
+│   └── CODEOWNERS           # Code ownership rules
+├── Dockerfile               # Backend containerization (root)
+├── docker-compose.yml        # Multi-container orchestration
+├── .dockerignore            # Docker build exclusions
 ├── .gitignore                # Root gitignore
 ├── README.md                 # This file
 ├── LICENSE                   # MIT License
+```
 
+## Contributing
+
+We welcome contributions to ShortifyAF! Please follow these guidelines:
+
+### Development Workflow
+
+1. **Fork the repository** and create a feature branch
+2. **Run tests locally** before pushing:
+   ```bash
+   cd backend && npm test && npm run lint
+   cd ../frontend && npm run lint && npm run build
+   ```
+3. **Commit your changes** with clear, descriptive messages
+4. **Push to your branch** and create a Pull Request
+
+### CI/CD Requirements
+
+All pull requests must pass the automated CI pipeline, which includes:
+-  **Code Linting**: ESLint checks for both frontend and backend
+-  **Automated Testing**: Backend functionality tests
+-  **Build Verification**: Frontend production build
+-  **Docker Builds**: Containerization verification for both backend and frontend
+
+The pipeline runs automatically on:
+- Pushes to any branch (except `main`)
+- Pull requests targeting `main`
+
+### Code Quality Standards
+
+- Follow ESLint rules (no errors allowed)
+- Write tests for new features
+- Ensure all tests pass
+- Keep Docker builds working
+- Maintain mobile-responsive design
+
+## Continuous Integration Evidence
+1. Branch protection evidence
+https://drive.google.com/file/d/1MIHl6m3OWfD1YdQz9m0xxoo9DB6kRu5E/view?usp=drive_link
+
+2. Successful run 1 Evidence 
+https://drive.google.com/drive/folders/1Kup6rYuLLz97UgfrNji4YV89TJNCSTI6?usp=drive_link
+
+3. Successful run 2 Evidence
+https://drive.google.com/drive/folders/1cboGti7kN4puJIAECQpjm_OXrTcFfEfz?usp=drive_link
+
+4. Succesful run 3 evidence
+https://drive.google.com/drive/folders/1BMmA_my9xdMgwC4FtpEsvSyTcKqD5zIi?usp=drive_link
+
+5. Intentional CI failure evidence
+https://drive.google.com/drive/folders/1AH6eUqNzHsAf3bECjdpjK92wrrvpDCon?usp=drive_link
 
 ## Links
-
 - **GitHub Repository**: [https://github.com/Simeon-Azeh/shortifyaf](https://github.com/Simeon-Azeh/shortifyaf)
+- **Deployed (ALB) URL**: http://shortifyaf-alb-1452321967.us-east-1.elb.amazonaws.com
+- **Terraform deployment guide**: ./terraform/README.md
 - **Project Board**: [View on GitHub Projects](https://github.com/users/Simeon-Azeh/projects/[1])
 - **API Documentation**: http://localhost:3000/api-docs (when running locally)
+ - **API Documentation**:
+    - Local: http://localhost:3001/api-docs (when running backend locally)
+    - Deployed (ALB): http://shortifyaf-alb-1452321967.us-east-1.elb.amazonaws.com/api-docs
 - **Issues & Bug Reports**: [GitHub Issues](https://github.com/Simeon-Azeh/shortifyaf/issues)
 
 ## License

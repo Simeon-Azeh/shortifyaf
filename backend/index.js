@@ -3,9 +3,16 @@ const express = require('express');
 const mongoose = require('mongoose');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// CORS configuration
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true
+}));
 
 // Swagger definition
 const swaggerOptions = {
@@ -44,14 +51,20 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Routes
 const urlRoutes = require('./routes/urlRoutes');
-app.use('/', urlRoutes);
+app.use('/api', urlRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
     res.send('Welcome to ShortifyAF - A simple URL shortener for Africa');
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
-});
+// Only start the server if this file is run directly (not when required as a module)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+    });
+}
+
+// Export the app for testing
+module.exports = app;

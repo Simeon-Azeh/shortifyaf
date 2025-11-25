@@ -14,7 +14,8 @@ RUN npm ci --only=production
 COPY backend/ .
 
 
-COPY backend/.env .env
+# .env is intentionally not copied into the image for security reasons.
+# The runtime environment (docker-compose or host) should provide required env vars.
 
 # Create a non-root user for security best practices
 RUN addgroup -g 1001 -S nodejs && \

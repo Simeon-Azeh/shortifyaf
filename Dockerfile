@@ -13,9 +13,13 @@ RUN npm ci --only=production
 # Copy the backend application code
 COPY backend/ .
 
+
+# .env is intentionally not copied into the image for security reasons.
+# The runtime environment (docker-compose or host) should provide required env vars.
+
 # Create a non-root user for security best practices
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S -u 1001 -G nodejs nodejs
 
 # Change ownership of the app directory to the non-root user
 RUN chown -R nodejs:nodejs /app

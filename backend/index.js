@@ -1,6 +1,6 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
+const db = require('./db');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const cors = require('cors');
@@ -34,14 +34,11 @@ const swaggerOptions = {
 
 const swaggerSpecs = swaggerJsdoc(swaggerOptions);
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-}).then(() => {
-    console.log('Connected to MongoDB');
+// Initialize PostgreSQL (create tables if needed)
+db.init().then(() => {
+    console.log('Postgres DB ready');
 }).catch(err => {
-    console.error('MongoDB connection error:', err);
+    console.error('Postgres connection error:', err);
 });
 
 app.use(express.json());

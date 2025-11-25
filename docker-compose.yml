@@ -1,19 +1,21 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:7-jammy
-    container_name: shortifyaf-mongodb
+  # Postgres Database (for development / local testing)
+  postgres:
+    image: postgres:13-alpine
+    container_name: shortifyaf-postgres
     restart: unless-stopped
     environment:
-      MONGO_INITDB_DATABASE: shortifyaf
+      POSTGRES_DB: shortifyaf
+      POSTGRES_USER: shortifyaf
+      POSTGRES_PASSWORD: shortifyaf
     volumes:
-      - mongodb_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - shortifyaf-network
     ports:
-      - "27017:27017"
+      - "5432:5432"
 
   # Backend API Service
   backend:
@@ -24,10 +26,11 @@ services:
     restart: unless-stopped
     environment:
       PORT: 3001
-      MONGODB_URI: mongodb://mongodb:27017/shortifyaf
+      # Local dev/postgres connection (replace in production with Azure DATABASE_URL)
+      DATABASE_URL: "postgres://shortifyaf:shortifyaf@postgres:5432/shortifyaf?sslmode=disable"
       FRONTEND_URL: http://localhost:3000
     depends_on:
-      - mongodb
+      - postgres
     networks:
       - shortifyaf-network
     ports:
@@ -57,7 +60,7 @@ services:
       - "80:80"
 
 volumes:
-  mongodb_data:
+  postgres_data:
 
 networks:
   shortifyaf-network:

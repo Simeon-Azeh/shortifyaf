@@ -1,4 +1,4 @@
-const Url = require('../models/Url');
+const Url = require('../models/urlModel');
 
 exports.shortenUrl = async (req, res) => {
     const { url } = req.body;
@@ -19,18 +19,14 @@ exports.shortenUrl = async (req, res) => {
         let shortId = Math.random().toString(36).substr(2, 6);
 
         // Check if shortId already exists (unlikely but possible)
-        let existingUrl = await Url.findOne({ shortId });
+        let existingUrl = await Url.findByShortId(shortId);
         while (existingUrl) {
             shortId = Math.random().toString(36).substr(2, 6);
-            existingUrl = await Url.findOne({ shortId });
+            existingUrl = await Url.findByShortId(shortId);
         }
 
         // Save to database
-        const newUrl = new Url({
-            shortId,
-            originalUrl: url
-        });
-        await newUrl.save();
+        await Url.insertUrl(shortId, url);
 
         // Build the public short URL using FRONTEND_URL when available.
         // FRONTEND_URL is set in production (terraform) to the ALB domain; locally it falls back to the request host.
@@ -46,10 +42,10 @@ exports.redirectUrl = async (req, res) => {
     const { shortId } = req.params;
 
     try {
-        const urlDoc = await Url.findOne({ shortId });
+        const urlDoc = await Url.findByShortId(shortId);
 
         if (urlDoc) {
-            res.redirect(urlDoc.originalUrl);
+            res.redirect(urlDoc.original_url || urlDoc.originalUrl);
         } else {
             res.status(404).send('Short URL not found');
         }
@@ -60,16 +56,13 @@ exports.redirectUrl = async (req, res) => {
 
 exports.getHistory = async (req, res) => {
     try {
-        const urls = await Url.find()
-            .sort({ createdAt: -1 })
-            .limit(10)
-            .select('shortId originalUrl createdAt');
+        const urls = await Url.findRecent(10);
 
         const base = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
         const history = urls.map(url => ({
-            shortUrl: `${base.replace(/\/$/, '')}/${url.shortId}`,
-            originalUrl: url.originalUrl,
-            createdAt: url.createdAt
+            shortUrl: `${base.replace(/\/$/, '')}/${url.short_id || url.shortId}`,
+            originalUrl: url.original_url || url.originalUrl,
+            createdAt: url.created_at || url.createdAt
         }));
 
         res.json({ history });

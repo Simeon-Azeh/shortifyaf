@@ -6,7 +6,9 @@ services:
     restart: unless-stopped
     environment:
       PORT: 3001
-      MONGODB_URI: "mongodb+srv://terraform-user:Testing123$@cluster0.hml4zet.mongodb.net/?appName=Cluster0"
+      # Use Azure managed Postgres - set this value on the host or replace below with a secure value
+      # Example (don't commit secrets): 
+      # DATABASE_URL: "postgres://shortify_user:SuperSecretPassword@shortifyaf-pg-dev.postgres.database.azure.com:5432/shortifyaf?sslmode=require"
       FRONTEND_URL: http://shortifyaf-alb-1452321967.us-east-1.elb.amazonaws.com
     ports:
       - "3001:3001"

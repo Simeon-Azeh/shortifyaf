@@ -23,9 +23,10 @@ const swaggerOptions = {
             version: '1.0.0',
             description: 'A simple URL shortener API for Africa\'s digital ecosystem',
         },
+        // The API routes are mounted under `/api`, so include `/api` in the server URL
         servers: [
             {
-                url: `http://localhost:${PORT}`,
+                url: `http://localhost:${PORT}/api`,
             },
         ],
     },

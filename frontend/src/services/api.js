@@ -1,8 +1,16 @@
 import axios from 'axios';
 
-// Use a relative /api path by default so the frontend can call the same origin (ALB or host)
-// For local development you can set VITE_API_URL to http://localhost:3001
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Ensure the API base URL includes the `/api` prefix.
+// If VITE_API_URL is set at build/runtime, normalize it so requests go to <VITE_API_URL>/api.
+// Otherwise, default to a relative `/api` path so same-origin calls work.
+const rawBase = import.meta.env.VITE_API_URL;
+let API_BASE_URL;
+if (rawBase) {
+    const cleaned = rawBase.replace(/\/+$/, ''); // strip trailing slashes
+    API_BASE_URL = cleaned.endsWith('/api') ? cleaned : `${cleaned}/api`;
+} else {
+    API_BASE_URL = '/api';
+}
 
 const api = axios.create({
     baseURL: API_BASE_URL,

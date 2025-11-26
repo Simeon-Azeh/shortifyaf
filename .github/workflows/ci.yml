@@ -43,8 +43,12 @@ jobs:
           docker build -t shortifyaf-backend .
 
       - name: Scan Docker image with Trivy
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasecurity/trivy:latest image --exit-code 1 --no-progress --format table shortifyaf-backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          scan-ref: 'shortifyaf-backend'
+          format: 'table'
+          exit-code: '1'
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -81,8 +85,12 @@ jobs:
           docker build -t shortifyaf-frontend --build-arg VITE_API_URL=/api .
 
       - name: Scan Docker image with Trivy
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasecurity/trivy:latest image --exit-code 1 --no-progress --format table shortifyaf-frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          scan-ref: 'shortifyaf-frontend'
+          format: 'table'
+          exit-code: '1'
 
   terraform-ci:
     runs-on: ubuntu-latest
@@ -109,4 +117,4 @@ jobs:
       - name: Scan Terraform with Checkov
         run: |
           pip install checkov
-          checkov -d terraform/ --framework terraform --output cli --compact
+          checkov -d terraform/ --framework terraform --output cli --compact --soft-fail

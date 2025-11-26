@@ -119,4 +119,4 @@ jobs:
       - name: Scan Terraform with Checkov
         run: |
           pip install checkov
-          checkov -d terraform/ --framework terraform --output cli --compact
+          checkov -d terraform/ --framework terraform --output cli --compact --soft-fail

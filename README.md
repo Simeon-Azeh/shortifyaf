@@ -55,14 +55,16 @@ When users visit a shortened URL, they see a professional loading screen with a 
 
 - **Frontend**: React 19 + Vite + React Router (Node.js 20+ required)
 - **Backend**: Node.js with Express.js framework
-- **Database**: MongoDB with Mongoose ODM
+- **Database**: Azure PostgreSQL Flexible Server
 - **API Documentation**: Swagger UI / OpenAPI 3.0
 - **Styling**: CSS3 with mobile-first responsive design
 - **Icons**: React Icons (Feather Icons)
 - **HTTP Client**: Axios
 - **Version Control**: Git & GitHub
 - **CI/CD**: GitHub Actions
+- **Infrastructure as Code**: Terraform with Azure Resource Manager
 - **Containerization**: Docker & Docker Compose
+- **Cloud Platform**: Microsoft Azure
 - **Code Quality**: ESLint, automated testing
 
 ## CI/CD Pipeline
@@ -166,7 +168,7 @@ ShortifyAF is fully containerized using Docker and Docker Compose for easy deplo
 
 ### Docker Services
 
-- **mongodb**: MongoDB database with persistent data volume
+- **postgres**: Azure PostgreSQL Flexible Server (external, managed)
 - **backend**: Node.js Express API server with health checks
 - **frontend**: React application served via Nginx
 
@@ -177,12 +179,12 @@ The docker-compose.yml includes default environment variables. For production, c
 ```env
 # Backend Configuration
 PORT=3001
-MONGODB_URI=mongodb://mongodb:27017/shortifyaf
-FRONTEND_URL=http://localhost:3000
+DATABASE_URL=postgresql://username:password@host:5432/database
+FRONTEND_URL=http://68.221.143.187
 
 # Frontend Configuration
 # The VITE_API_URL should point to the backend base including '/api' (for example: http://localhost:3001/api)
-VITE_API_URL=http://localhost:3001/api
+VITE_API_URL=/api
 ```
 
 ### Docker Commands
@@ -225,7 +227,7 @@ For production deployment:
 
 1. Update environment variables for your domain
 2. Use a reverse proxy (nginx) for SSL termination
-3. Configure MongoDB authentication
+3. Configure Postgres authentication
 4. Set up proper logging and monitoring
 5. Use Docker secrets for sensitive data
 
@@ -245,7 +247,7 @@ Before running ShortifyAF, ensure you have the following installed:
 
 - **Node.js** (v20.0 or higher for frontend, v16.0 or higher for backend) - [Download here](https://nodejs.org/)
 - **npm** (comes with Node.js) or **yarn**
-- **MongoDB** (v4.4 or higher) - [Download here](https://www.mongodb.com/try/download/community)
+- **PostgreSQL** (for local development) - [Download here](https://www.postgresql.org/download/)
 - **Git** - [Download here](https://git-scm.com/downloads)
 
 ### Installation
@@ -273,8 +275,8 @@ touch .env
 Add the following to your `.env` file:
 
 ```env
-PORT=3000
-MONGODB_URI=mongodb://localhost:27017/shortifyaf
+PORT=3001
+DATABASE_URL=postgresql://username:password@localhost:5432/shortifyaf
 NODE_ENV=development
 ```
 
@@ -302,19 +304,25 @@ npm install
 npm run dev
 ```
 
-#### 4. Verify MongoDB is Running
+#### 4. Verify PostgreSQL is Running
 
-Ensure MongoDB is running on your system:
+Ensure PostgreSQL is running on your system:
 
 ```bash
 # For macOS (if installed via Homebrew)
-brew services start mongodb-community
+brew services start postgresql
 
 # For Linux
-sudo systemctl start mongod
+sudo systemctl start postgresql
 
 # For Windows
-# MongoDB should start automatically as a service
+# PostgreSQL should start automatically as a service
+```
+
+Create the database:
+
+```bash
+createdb shortifyaf
 ```
 
 ### Usage
@@ -337,7 +345,7 @@ Once both servers are running:
    - Track which links you've created
 
 5. **API Access**:
-   - Visit `http://localhost:3000/api-docs` for interactive API documentation
+   - Visit `http://localhost:3001/api-docs` for interactive API documentation
    - Use the API endpoints to integrate with your own applications
 
 
@@ -430,13 +438,13 @@ https://drive.google.com/drive/folders/1AH6eUqNzHsAf3bECjdpjK92wrrvpDCon?usp=dri
 
 ## Links
 - **GitHub Repository**: [https://github.com/Simeon-Azeh/shortifyaf](https://github.com/Simeon-Azeh/shortifyaf)
-- **Deployed (ALB) URL**: http://shortifyaf-alb-1452321967.us-east-1.elb.amazonaws.com
+- **Deployed (Azure LB) URL**: http://68.221.143.187
 - **Terraform deployment guide**: ./terraform/README.md
 - **Project Board**: [View on GitHub Projects](https://github.com/users/Simeon-Azeh/projects/[1])
-- **API Documentation**: http://localhost:3000/api-docs (when running locally)
+- **API Documentation**: http://localhost:3001/api-docs (when running locally)
  - **API Documentation**:
     - Local: http://localhost:3001/api-docs (when running backend locally)
-    - Deployed (ALB): http://shortifyaf-alb-1452321967.us-east-1.elb.amazonaws.com/api-docs
+    - Deployed (Azure LB): http://68.221.143.187/api-docs
 - **Issues & Bug Reports**: [GitHub Issues](https://github.com/Simeon-Azeh/shortifyaf/issues)
 
 ## License

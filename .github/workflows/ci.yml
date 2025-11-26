@@ -42,6 +42,15 @@ jobs:
         run: |
           docker build -t shortifyaf-backend .
 
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "image"
+          scan-ref: "shortifyaf-backend"
+          format: "table"
+          severity: "CRITICAL"
+          exit-code: "1"
+
   frontend-ci:
     runs-on: ubuntu-latest
 
@@ -75,3 +84,39 @@ jobs:
         run: |
           cd frontend
           docker build -t shortifyaf-frontend --build-arg VITE_API_URL=/api .
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "image"
+          scan-ref: "shortifyaf-frontend"
+          format: "table"
+          severity: "CRITICAL"
+          exit-code: "1"
+
+  terraform-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Terraform Validate
+        run: |
+          cd terraform
+          terraform validate
+
+      - name: Scan Terraform with Checkov
+        run: |
+          pip install checkov
+          checkov -d terraform/ --framework terraform --output cli --compact --soft-fail

@@ -51,6 +51,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 const urlRoutes = require('./routes/urlRoutes');
 app.use('/api', urlRoutes);
 
+// Redirect route for short URLs
+const urlController = require('./controllers/urlController');
+app.get('/:shortId', urlController.redirectUrl);
+
 // Basic route
 app.get('/', (req, res) => {
     res.send('Welcome to ShortifyAF - A simple URL shortener for Africa');

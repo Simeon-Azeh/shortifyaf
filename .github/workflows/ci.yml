@@ -84,6 +84,6 @@ jobs:
            exit-code: 1
  
       - name: Run tsef
-        uses: aquasecurity/tsef-action@v1.0.0
+        uses: aquasecurity/trivy-action@master
         with:
           soft_fail: 'false'

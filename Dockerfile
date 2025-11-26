@@ -19,7 +19,7 @@ COPY backend/ .
 
 # Create a non-root user for security best practices
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S -u 1001 -G nodejs nodejs
+  adduser -S -u 1001 -G nodejs nodejs
 
 # Change ownership of the app directory to the non-root user
 RUN chown -R nodejs:nodejs /app

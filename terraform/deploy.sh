@@ -95,7 +95,7 @@ services:
     container_name: shortifyaf-frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: http://localhost:3001
+      VITE_API_URL: /api
     depends_on:
       - backend
     ports:

@@ -181,7 +181,8 @@ MONGODB_URI=mongodb://mongodb:27017/shortifyaf
 FRONTEND_URL=http://localhost:3000
 
 # Frontend Configuration
-VITE_API_URL=http://localhost:3001
+# The VITE_API_URL should point to the backend base including '/api' (for example: http://localhost:3001/api)
+VITE_API_URL=http://localhost:3001/api
 ```
 
 ### Docker Commands

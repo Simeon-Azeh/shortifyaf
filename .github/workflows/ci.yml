@@ -83,3 +83,7 @@ jobs:
            severity: CRITICAL,HIGH
            exit-code: 1
  
+      - name: Run tsef
+        uses: aquasecurity/tsef-action@v1.0.0
+        with:
+          soft_fail: 'false'

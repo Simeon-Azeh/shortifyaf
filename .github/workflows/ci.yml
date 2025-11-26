@@ -48,7 +48,8 @@ jobs:
           scan-type: "image"
           scan-ref: "shortifyaf-backend"
           format: "table"
-          exit-code: "0"
+          severity: "CRITICAL"
+          exit-code: "1"
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -90,7 +91,8 @@ jobs:
           scan-type: "image"
           scan-ref: "shortifyaf-frontend"
           format: "table"
-          exit-code: "0"
+          severity: "CRITICAL"
+          exit-code: "1"
 
   terraform-ci:
     runs-on: ubuntu-latest
@@ -117,4 +119,4 @@ jobs:
       - name: Scan Terraform with Checkov
         run: |
           pip install checkov
-          checkov -d terraform/ --framework terraform --output cli --compact --soft-fail
+          checkov -d terraform/ --framework terraform --output cli --compact

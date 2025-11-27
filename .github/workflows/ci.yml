@@ -9,8 +9,24 @@ on:
       - main
 
 jobs:
+
   backend-ci:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: shortify
+          POSTGRES_USER: shortify
+          POSTGRES_PASSWORD: shortify
+        options: >-
+          --health-cmd="pg_isready -U shortify"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout code
@@ -28,19 +44,21 @@ jobs:
           cd backend
           npm ci
 
-      - name: Run linting
+      - name: Run backend linting
         run: |
           cd backend
           npm run lint
 
-      - name: Run tests
+      - name: Run backend tests
+        env:
+          DATABASE_URL: postgresql://shortify:shortify@localhost:5432/shortify
         run: |
           cd backend
           npm test
 
-      - name: Build Docker image
+      - name: Build backend Docker image
         run: |
-          docker build -t shortifyaf-backend .
+          docker build -t shortifyaf-backend ./backend
 
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
@@ -70,7 +88,7 @@ jobs:
           cd frontend
           npm ci
 
-      - name: Run linting
+      - name: Run frontend linting
         run: |
           cd frontend
           npm run lint
@@ -80,19 +98,20 @@ jobs:
           cd frontend
           npm run build
 
-      - name: Build Docker image
+      - name: Build frontend Docker image
         run: |
           cd frontend
           docker build -t shortifyaf-frontend --build-arg VITE_API_URL=/api .
 
-      - name: Scan Docker image with Trivy
+      - name: Scan frontend Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "image"
-          scan-ref: "shortifyaf-frontend"
+          image-ref: "shortifyaf-frontend"
           format: "table"
-          severity: "CRITICAL"
+          severity: "CRITICAL,HIGH"
           exit-code: "1"
+
 
   terraform-ci:
     runs-on: ubuntu-latest
@@ -100,6 +119,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install Python (required for Checkov)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -109,14 +133,15 @@ jobs:
       - name: Terraform Init
         run: |
           cd terraform
-          terraform init
+          terraform init -backend=false
 
       - name: Terraform Validate
         run: |
           cd terraform
           terraform validate
 
-      - name: Scan Terraform with Checkov
+      - name: Run Checkov (Terraform Security Scan)
         run: |
           pip install checkov
-          checkov -d terraform/ --framework terraform --output cli --compact --soft-fail
+          checkov --version
+          checkov -d terraform/ --framework terraform --output cli --compact --hard-fail-on HIGH

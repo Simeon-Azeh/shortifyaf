@@ -1,6 +1,7 @@
 # Use Node.js 18 LTS as the base image for a stable, secure runtime
 FROM node:18-alpine
 
+
 # Set working directory inside the container
 WORKDIR /app
 

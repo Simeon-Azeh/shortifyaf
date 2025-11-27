@@ -1,0 +1,8 @@
+ignore:
+  - vulnerability-id: CVE-2024-21538
+    reason: "Bundled inside npm's global packages"
+    fix-state: fixed
+
+  - vulnerability-id: CVE-2025-64756
+    reason: "Bundled in npm CLI; not used at runtime"
+    fix-state: fixed

@@ -60,9 +60,12 @@ jobs:
           docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest --build-arg VITE_API_URL=/api ./frontend
           docker push ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
 
-      - name: Setup Ansible
+      - name: Setup SSH Key
         run: |
-          pip install ansible
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AZURE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ steps.tf-outputs.outputs.bastion_public_ip }} >> ~/.ssh/known_hosts
 
       - name: Update Ansible inventory
         run: |

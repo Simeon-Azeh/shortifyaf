@@ -1,5 +1,5 @@
 ---
-- name: Deploy ShortifyAF container on Azure VM
+- name: Deploy ShortifyAF on Azure VM
   hosts: appserver
   become: yes
   vars:
@@ -16,26 +16,80 @@
         group: "{{ ansible_user }}"
         mode: '0755'
 
-    - name: Write docker-compose.yml
+    - name: Pull or update repo on target (git clone if missing)
+      become: yes
+      block:
+        - name: Check if repo exists
+          stat:
+            path: "{{ app_dir }}/.git"
+          register: repo_exists
+
+        - name: Clone repo if missing
+          command: git clone https://github.com/Simeon-Azeh/shortifyaf.git "{{ app_dir }}"
+          when: not repo_exists.stat.exists
+
+        - name: Pull latest if repo exists
+          command: git -C "{{ app_dir }}" pull
+          when: repo_exists.stat.exists
+
+    - name: Write production docker-compose.yml on the server
       copy:
         dest: "{{ docker_compose_file }}"
         content: |
           version: "3.8"
           services:
-            web:
+            mongodb:
+              image: mongo:7-jammy
+              restart: unless-stopped
+              environment:
+                MONGO_INITDB_DATABASE: shortifyaf
+              volumes:
+                - mongodb_data:/data/db
+              networks:
+                - shortifyaf-network
+
+            backend:
               image: {{ image_uri }}
               restart: unless-stopped
-              ports:
-                - "80:3000"
               environment:
-                - NODE_ENV=production
-              volumes:
-                - ./data:/app/data
+                PORT: 3001
+                MONGODB_URI: mongodb://mongodb:27017/shortifyaf
+                FRONTEND_URL: http://localhost
+              depends_on:
+                - mongodb
+              networks:
+                - shortifyaf-network
+
+            frontend:
+              build:
+                context: ./frontend
+                dockerfile: Dockerfile
+              restart: unless-stopped
+              environment:
+                VITE_API_URL: http://localhost:3001
+              depends_on:
+                - backend
+              networks:
+                - shortifyaf-network
+              ports:
+                - "80:80"
+
+          volumes:
+            mongodb_data:
+
+          networks:
+            shortifyaf-network:
+              driver: bridge
       notify: Restart compose
 
   handlers:
     - name: Restart compose
+      become: yes
       shell: |
         cd {{ app_dir }} || exit 1
-        docker compose pull web || true
+        # make sure docker compose plugin available
+        docker compose pull backend || true
+        docker compose build frontend || true
         docker compose up -d --remove-orphans
+      args:
+        warn: false

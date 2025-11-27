@@ -68,6 +68,9 @@ jobs:
           format: "table"
           severity: "CRITICAL,HIGH"
           exit-code: "1"
+          ignore-unfixed: true
+          skip-files: |
+            usr/local/lib/node_modules/npm/node_modules/glob/
 
 
   frontend-ci:

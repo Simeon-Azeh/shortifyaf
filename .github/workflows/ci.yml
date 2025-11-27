@@ -24,30 +24,27 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
-        run: |
-          cd backend
-          npm ci
+        working-directory: backend
+        run: npm ci
 
       - name: Run linting
-        run: |
-          cd backend
-          npm run lint
+        working-directory: backend
+        run: npm run lint
 
       - name: Run tests
-        run: |
-          cd backend
-          npm test
+        working-directory: backend
+        run: npm test
 
       - name: Build Docker image
-        run: |
-          docker build -t shortifyaf-backend .
+        run: docker build -t shortifyaf-backend ./backend
 
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.64.0
         with:
           scan-type: "image"
           scan-ref: "shortifyaf-backend"
           format: "table"
+          cache: true
           severity: "CRITICAL"
           exit-code: "1"
 
@@ -66,25 +63,51 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: |
-          cd frontend
-          npm ci
+        working-directory: frontend
+        run: npm ci
 
       - name: Run linting
-        run: |
-          cd frontend
-          npm run lint
+        working-directory: frontend
+        run: npm run lint
 
       - name: Build frontend
-        run: |
-          cd frontend
-          npm run build
+        working-directory: frontend
+        run: npm run build
 
       - name: Build Docker image
-        run: |
-          cd frontend
-          docker build -t shortifyaf-frontend --build-arg VITE_API_URL=/api .
+        run: docker build -t shortifyaf-frontend ./frontend --build-arg VITE_API_URL=/api
 
-      - name: Run Trivy vulnerability scanner 
-        uses: aquasecurity/trivy-action@v0.65.0 
-  
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@v0.64.0
+        with:
+          scan-type: "image"
+          scan-ref: "shortifyaf-frontend"
+          format: "table"
+          cache: true
+          severity: "CRITICAL"
+          exit-code: "1"
+
+  terraform-ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Scan Terraform with Checkov
+        run: |
+          pip install checkov
+          checkov -d terraform/ --framework terraform --output cli --compact --soft-fail

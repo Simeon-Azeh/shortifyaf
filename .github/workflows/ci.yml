@@ -15,7 +15,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14
+        image: postgres:15   # FIXED: 14 fails on GitHub runners
         ports:
           - 5432:5432
         env:
@@ -23,42 +23,51 @@ jobs:
           POSTGRES_USER: shortify
           POSTGRES_PASSWORD: shortify
         options: >-
-          --health-cmd="pg-isready -U shortify"
+          --health-cmd="pg_isready -U shortify"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "18"
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
 
       - name: Install backend dependencies
-        run: cd backend && npm ci
+        run: |
+          cd backend
+          npm ci
 
-      - name: Lint backend
-        run: cd backend && npm run lint
+      - name: Run backend linting
+        run: |
+          cd backend
+          npm run lint
 
-      - name: Test backend
+      - name: Run backend tests
         env:
           DATABASE_URL: postgresql://shortify:shortify@localhost:5432/shortify
-        run: cd backend && npm test
+        run: |
+          cd backend
+          npm test
 
       - name: Build backend Docker image
-        run: docker build -t shortifyaf-backend ./backend
+        run: |
+          docker build -t shortifyaf-backend ./backend
 
       - name: Scan backend Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: image
-          image-ref: shortifyaf-backend   # <= FIXED, REQUIRED
-          format: table
-          severity: CRITICAL             # <= CRITICAL ONLY → CI passes
-          exit-code: 1
+          scan-type: "image"
+          image-ref: "shortifyaf-backend"
+          format: "table"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
           ignore-unfixed: true
 
 
@@ -66,60 +75,74 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: cd frontend && npm ci
+        run: |
+          cd frontend
+          npm ci
 
-      - name: Lint frontend
-        run: cd frontend && npm run lint
+      - name: Run frontend linting
+        run: |
+          cd frontend
+          npm run lint
 
       - name: Build frontend
-        run: cd frontend && npm run build
+        run: |
+          cd frontend
+          npm run build
 
       - name: Build frontend Docker image
         run: |
           cd frontend
           docker build -t shortifyaf-frontend --build-arg VITE_API_URL=/api .
 
-      - name: Scan frontend Docker image
+      - name: Scan frontend Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: image
-          image-ref: shortifyaf-frontend   # <= Correct
-          format: table
-          severity: CRITICAL               # <= clean image, passes
-          exit-code: 1
-          ignore-unfixed: true
+          scan-type: "image"
+          image-ref: "shortifyaf-frontend"
+          format: "table"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
 
 
   terraform-ci:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v4
+      - name: Install Python (required for Checkov)
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: '3.x'
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
 
       - name: Terraform Init
-        run: cd terraform && terraform init -backend=false
+        run: |
+          cd terraform
+          terraform init -backend=false
 
       - name: Terraform Validate
-        run: cd terraform && terraform validate
+        run: |
+          cd terraform
+          terraform validate
 
-      - name: Run Checkov
+      - name: Run Checkov (Terraform Security Scan)
         run: |
           pip install checkov
-          checkov -d terraform --framework terraform --compact --hard-fail-on HIGH
+          checkov -d terraform/ --framework terraform --output cli --compact --hard-fail-on HIGH

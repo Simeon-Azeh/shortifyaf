@@ -1,0 +1,81 @@
+name: CD Pipeline
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    ci-checks:
+        uses: ./.github/workflows/ci.yml
+
+    build-and-deploy:
+        needs: ci-checks
+        runs-on: ubuntu-latest
+        environment: production
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Login to Azure
+              uses: azure/login@v1
+              with:
+                  creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                  terraform_version: "1.5.0"
+
+            - name: Terraform Init
+              run: |
+                  cd terraform
+                  terraform init
+
+            - name: Get Terraform Outputs
+              id: tf-outputs
+              run: |
+                  cd terraform
+                  ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
+                  RESOURCE_GROUP=$(terraform output -raw resource_group_name)
+                  BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip)
+                  echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+                  echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
+                  echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
+
+            - name: Login to Azure Container Registry
+              run: |
+                  az acr login --name ${{ steps.tf-outputs.outputs.acr_login_server }}
+
+            - name: Build and push backend image
+              run: |
+                  docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-backend:latest ./backend
+                  docker push ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-backend:latest
+
+            - name: Build and push frontend image
+              run: |
+                  docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest --build-arg VITE_API_URL=/api ./frontend
+                  docker push ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
+
+            - name: Setup Ansible
+              run: |
+                  pip install ansible
+
+            - name: Update Ansible inventory
+              run: |
+                  echo "[app_servers]" > ansible/inventory.ini
+                  echo "${{ steps.tf-outputs.outputs.bastion_public_ip }} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/inventory.ini
+
+            - name: Run Ansible playbook
+              run: |
+                  ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa
+
+            - name: Deploy application
+              run: |
+                  ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }} << 'EOF'
+                    cd /home/azureuser/shortifyaf
+                    docker-compose down
+                    docker-compose pull
+                    docker-compose up -d
+                  EOF

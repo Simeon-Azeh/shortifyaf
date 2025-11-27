@@ -69,8 +69,6 @@ jobs:
           severity: "CRITICAL,HIGH"
           exit-code: "1"
           ignore-unfixed: true
-          ignore-vulns: |
-            CVE-2025-64756
 
 
   frontend-ci:

@@ -1,6 +1,7 @@
 # Use Node.js 18 LTS as the base image for a stable, secure runtime
 FROM node:18-alpine
 
+
 # Set working directory inside the container
 WORKDIR /app
 
@@ -8,7 +9,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 
 # Install only production dependencies to keep image size small
-RUN npm ci --only=production
+RUN npm install -g npm@10.6.0 && npm ci --only=production
 
 # Copy the backend application code
 COPY backend/ .

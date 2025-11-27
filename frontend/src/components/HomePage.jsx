@@ -132,7 +132,7 @@ const HomePage = () => {
                             {loading ? (
                                 <span className="loading-spinner"></span>
                             ) : (
-                                'Generate Link'
+                                'Create Short Link'
                             )}
                         </button>
                     </div>

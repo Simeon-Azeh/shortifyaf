@@ -144,4 +144,5 @@ jobs:
       - name: Run Checkov (Terraform Security Scan)
         run: |
           pip install checkov
-          checkov -d terraform/ --framework terraform --output cli --compact --severity-level HIGH
+          checkov --version
+          checkov -d terraform/ --framework terraform --output cli --compact --hard-fail-on HIGH

@@ -69,15 +69,15 @@ jobs:
         echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} \
           --username "${{ secrets.ACR_USERNAME }}" --password-stdin
 
+        # -----------------------------
+    # 4) Build & Push Docker image (backend) to ACR
     # -----------------------------
-    # 4) Build & Push Docker image to ACR
-    # -----------------------------
-    - name: Build and push image
+    - name: Build and push backend image
       id: build
       run: |
         TAG=${GITHUB_SHA::8}
-        IMAGE_URI=${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.ACR_REPOSITORY }}:$TAG
-        docker build -t "$IMAGE_URI" .
+        IMAGE_URI=${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.ACR_REPOSITORY }}-backend:$TAG
+        docker build -f backend/Dockerfile -t "$IMAGE_URI" backend
         docker push "$IMAGE_URI"
         echo "image_uri=$IMAGE_URI" >> $GITHUB_OUTPUT
 

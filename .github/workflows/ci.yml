@@ -64,12 +64,12 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "image"
-          image-ref: "shortifyaf-backend"    # FIXED
+          image-ref: "shortifyaf-backend"  
           format: "table"
           severity: "CRITICAL,HIGH"
           exit-code: "1"
           ignore-unfixed: true
-          # Skip the vulnerable folders inside global npm (safe, recommended)
+          ignore-policy: ".trivyignore.yaml"
           skip-dirs: |
             /usr/local/lib/node_modules/npm/node_modules/cross-spawn
             /usr/local/lib/node_modules/npm/node_modules/glob

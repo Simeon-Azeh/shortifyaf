@@ -64,15 +64,12 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "image"
-          image-ref: "shortifyaf-backend"  
+          image-ref: "shortifyaf-backend"
           format: "table"
           severity: "CRITICAL,HIGH"
           exit-code: "1"
           ignore-unfixed: true
           ignore-policy: ".trivyignore.yaml"
-          skip-dirs: |
-            /usr/local/lib/node_modules/npm/node_modules/cross-spawn
-            /usr/local/lib/node_modules/npm/node_modules/glob
 
 
   frontend-ci:
@@ -113,7 +110,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "image"
-          image-ref: "shortifyaf-frontend"  # FIXED for consistency
+          image-ref: "shortifyaf-frontend"
           format: "table"
           severity: "CRITICAL,HIGH"
           exit-code: "1"

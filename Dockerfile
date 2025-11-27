@@ -9,7 +9,7 @@ WORKDIR /app
 COPY backend/package*.json ./
 
 # Install only production dependencies to keep image size small
-RUN npm install -g npm@10.6.0 && npm ci --only=production
+RUN npm install -g npm@10.6.0 &&npm ci --only=production
 
 # Copy the backend application code
 COPY backend/ .

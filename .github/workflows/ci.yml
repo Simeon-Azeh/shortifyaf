@@ -9,8 +9,24 @@ on:
       - main
 
 jobs:
+
   backend-ci:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: shortify
+          POSTGRES_USER: shortify
+          POSTGRES_PASSWORD: shortify
+        options: >-
+          --health-cmd="pg_isready -U shortify"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout code
@@ -34,6 +50,8 @@ jobs:
           npm run lint
 
       - name: Run backend tests
+        env:
+          DATABASE_URL: postgresql://shortify:shortify@localhost:5432/shortify
         run: |
           cd backend
           npm test
@@ -49,7 +67,7 @@ jobs:
           scan-ref: "shortifyaf-backend"
           format: "table"
           severity: "CRITICAL,HIGH"
-          exit-code: "1"     # FAIL IF vulnerability found
+          exit-code: "1"
 
 
   frontend-ci:
@@ -93,7 +111,7 @@ jobs:
           scan-ref: "shortifyaf-frontend"
           format: "table"
           severity: "CRITICAL,HIGH"
-          exit-code: "1"     # FAIL IF vulnerability found
+          exit-code: "1"
 
 
   terraform-ci:
@@ -127,4 +145,3 @@ jobs:
         run: |
           pip install checkov
           checkov -d terraform/ --framework terraform --output cli --compact --severity-level HIGH
-        # Pipeline will FAIL if HIGH severity issues found (as required)

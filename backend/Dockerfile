@@ -1,5 +1,8 @@
 FROM node:18-alpine
 
+# Upgrade npm so that bundled npm dependencies (cross-spawn, glob, etc.) are patched
+RUN npm install -g npm@latest
+
 # Set working directory
 WORKDIR /app
 

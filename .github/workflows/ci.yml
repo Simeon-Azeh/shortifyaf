@@ -10,7 +10,6 @@ on:
   workflow_call:
 
 jobs:
-
   backend-ci:
     runs-on: ubuntu-latest
 
@@ -113,7 +112,6 @@ jobs:
           severity: "CRITICAL,HIGH"
           exit-code: "1"
 
-
   terraform-ci:
     runs-on: ubuntu-latest
 
@@ -124,7 +122,7 @@ jobs:
       - name: Install Python (required for Checkov)
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: "3.x"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

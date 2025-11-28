@@ -39,6 +39,13 @@ jobs:
           cd terraform
           terraform init
 
+          
+      - name: Terraform Apply
+        run: |
+          cd terraform
+          terraform apply -auto-approve
+
+
       - name: Get Terraform Outputs
         id: tf-outputs
         run: |

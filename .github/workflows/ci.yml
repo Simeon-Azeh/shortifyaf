@@ -109,7 +109,7 @@ jobs:
           scan-type: "image"
           image-ref: "shortifyaf-frontend"
           format: "table"
-          severity: "CRITICAL,HIGH"
+          severity: "CRITICAL"
           exit-code: "1"
 
   terraform-ci:

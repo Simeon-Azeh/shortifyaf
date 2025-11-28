@@ -21,18 +21,14 @@ COPY . .
 # Build the application
 RUN npm run build
 
-# Use Nginx to serve the built static files
-FROM nginx:1.27
+# Use Caddy to serve the built static files
+FROM caddy:2-alpine
 
-# Copy built files from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy custom nginx configuration
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libpng16-16 libxml2 && rm -rf /var/lib/apt/lists/*
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy built files from builder stage to /srv which Caddy serves by default
+COPY --from=builder /app/dist /srv
 
 # Expose port 80
 EXPOSE 80
 
-# Start Nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start Caddy
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

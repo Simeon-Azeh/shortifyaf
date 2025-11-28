@@ -29,7 +29,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -43,10 +42,27 @@ jobs:
       - name: Get Terraform Outputs
         id: tf-outputs
         run: |
+          set -euo pipefail
           cd terraform
-          ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
-          RESOURCE_GROUP=$(terraform output -raw resource_group_name)
-          BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip)
+          # Check if outputs exist
+          if terraform output -json | jq 'length' >/dev/null 2>&1; then
+            ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server || true)
+            RESOURCE_GROUP=$(terraform output -raw resource_group_name || true)
+            BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip || true)
+          else
+            echo "No Terraform outputs found in state."
+            if [ "${{ secrets.TF_AUTO_APPLY }}" = "true" ]; then
+              echo "TF_AUTO_APPLY=true detected — running terraform apply to create resources."
+              terraform plan -out=tfplan
+              terraform apply -auto-approve tfplan
+              ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server || true)
+              RESOURCE_GROUP=$(terraform output -raw resource_group_name || true)
+              BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip || true)
+            else
+              echo "Please run 'terraform apply' or configure remote state before running the CD pipeline."
+              exit 1
+            fi
+          fi
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT

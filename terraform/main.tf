@@ -1,3 +1,17 @@
+
+terraform {
+  required_version = ">= 1.5.0"
+
+  backend "azurerm" {
+    resource_group_name  = "shortifyaf-rg"       # your existing resource group
+    storage_account_name = "shortifyaftfstate"   # your storage account
+    container_name       = "tfstate"             # blob container in the storage account
+    key                  = "terraform.tfstate"   # the state filename
+  }
+}
+
+
+
 module "vnet" {
   source       = "./modules/azure_vnet"
   project_name = var.project_name
@@ -8,7 +22,7 @@ module "vnet" {
   private_subnet_cidrs = var.private_subnet_cidrs
 }
 
-# Optionally create the resource group if requested. If user prefers, they can create RG outside and keep create_resource_group=false
+
 resource "azurerm_resource_group" "rg" {
   count    = var.create_resource_group ? 1 : 0
   name     = var.resource_group_name
@@ -46,7 +60,7 @@ module "compute" {
   make_app_public      = true
 }
 
-/* For now, ALB/NLB on AWS are not required — with Azure we'll front via NSG and bastion or later add an Application Gateway if desired. */
+
 
 module "postgres" {
   source       = "./modules/azure_postgres"
@@ -55,7 +69,3 @@ module "postgres" {
   location     = var.azure_location
   resource_group_name = local.effective_resource_group
 }
-
-/* API listener & target-group are handled within modules/alb */
-
-/* DocumentDB support removed — this configuration uses MongoDB Atlas (external) */

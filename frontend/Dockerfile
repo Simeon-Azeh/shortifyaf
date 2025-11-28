@@ -26,6 +26,7 @@ FROM caddy:2-alpine
 
 # Copy built files from builder stage to /srv which Caddy serves by default
 COPY --from=builder /app/dist /srv
+COPY Caddyfile /etc/caddy/Caddyfile
 
 # Expose port 80
 EXPOSE 80

@@ -56,6 +56,10 @@ variable "admin_ssh_public_key" {
   description = "Public SSH key to inject for admin user on VMs (raw public key text). Provide the public key text or the path in tfvars."
   type        = string
   default     = ""
+  validation {
+    condition     = length(trim(var.admin_ssh_public_key)) > 0
+    error_message = "admin_ssh_public_key must be provided and cannot be empty. Set it in terraform.tfvars or as TF_VAR_admin_ssh_public_key environment variable."
+  }
 }
 
 variable "allowed_ssh_cidr" {

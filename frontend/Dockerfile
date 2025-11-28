@@ -22,13 +22,13 @@ COPY . .
 RUN npm run build
 
 # Use Nginx to serve the built static files
-FROM nginx:1.27-alpine
+FROM nginx:1.27
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
-RUN apk add --no-cache libpng
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libpng16-16 libxml2 && rm -rf /var/lib/apt/lists/*
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Expose port 80

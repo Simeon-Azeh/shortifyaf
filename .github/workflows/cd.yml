@@ -22,17 +22,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
+
+      # ---- Terraform SP Authentication ----
+      - name: Set Azure Service Principal env variables
+        run: |
+          echo "ARM_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: |
@@ -41,7 +42,6 @@ jobs:
 
       - name: Set Terraform SSH public key env var
         run: |
-          # Export as TF_VAR so terraform will pick it up across steps
           echo "TF_VAR_admin_ssh_public_key=${{ secrets.AZURE_SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
 
       - name: Terraform Apply
@@ -54,22 +54,14 @@ jobs:
         run: |
           set -euo pipefail
           cd terraform
-
-          # Generate outputs as JSON safely
           outputs_json=$(terraform output -json || echo '{}')
-
-          # Extract values safely using jq, default to empty string
           ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
           RESOURCE_GROUP=$(echo "$outputs_json" | jq -r '.resource_group_name.value // empty')
           BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
-
-          # Fail if critical outputs are missing
           if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$RESOURCE_GROUP" ] || [ -z "$BASTION_PUBLIC_IP" ]; then
             echo "Required Terraform outputs are missing. Did you apply the Terraform plan?"
             exit 1
           fi
-
-          # Set GitHub Actions outputs
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT

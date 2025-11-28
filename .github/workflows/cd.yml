@@ -44,28 +44,26 @@ jobs:
         run: |
           set -euo pipefail
           cd terraform
-          # Check if outputs exist
-          if terraform output -json | jq 'length' >/dev/null 2>&1; then
-            ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server || true)
-            RESOURCE_GROUP=$(terraform output -raw resource_group_name || true)
-            BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip || true)
-          else
-            echo "No Terraform outputs found in state."
-            if [ "${{ secrets.TF_AUTO_APPLY }}" = "true" ]; then
-              echo "TF_AUTO_APPLY=true detected — running terraform apply to create resources."
-              terraform plan -out=tfplan
-              terraform apply -auto-approve tfplan
-              ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server || true)
-              RESOURCE_GROUP=$(terraform output -raw resource_group_name || true)
-              BASTION_PUBLIC_IP=$(terraform output -raw bastion_public_ip || true)
-            else
-              echo "Please run 'terraform apply' or configure remote state before running the CD pipeline."
-              exit 1
-            fi
+
+          # Generate outputs as JSON safely
+          outputs_json=$(terraform output -json || echo '{}')
+
+          # Extract values safely using jq, default to empty string
+          ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
+          RESOURCE_GROUP=$(echo "$outputs_json" | jq -r '.resource_group_name.value // empty')
+          BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
+
+          # Fail if critical outputs are missing
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$RESOURCE_GROUP" ] || [ -z "$BASTION_PUBLIC_IP" ]; then
+            echo "Required Terraform outputs are missing. Did you apply the Terraform plan?"
+            exit 1
           fi
+
+          # Set GitHub Actions outputs
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
+
 
       - name: Login to Azure Container Registry
         run: |

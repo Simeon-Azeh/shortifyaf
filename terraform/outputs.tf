@@ -55,6 +55,3 @@ output "app_nsg_id" {
   value       = module.compute.app_nsg_id
 }
 
-/* DocumentDB outputs removed — using MongoDB Atlas (external) */
-
-/* DocumentDB outputs removed — using MongoDB Atlas (external) */

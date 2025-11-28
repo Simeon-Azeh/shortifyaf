@@ -81,6 +81,20 @@ Important: This project uses Azure PostgreSQL Flexible Server for production. Th
 ```bash
 terraform init
 ```
+If you intend to use continuous deployment from GitHub Actions, configure a remote backend (e.g., Azure Storage) so the CI runner can access the Terraform state. Without a remote backend the GitHub workflow will not have access to the local state and `terraform output` will return "No outputs found".
+
+Example backend (Azure Storage) config in `terraform/backend.tf`:
+```hcl
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "tfstate-rg"
+    storage_account_name = "tfstate<unique>"
+    container_name       = "tfstate"
+    key                  = "shortifyaf.tfstate"
+  }
+}
+```
+You must create the storage account and container before initializing with this backend. See Azure docs for guidance.
 
 ### 5. Plan the Deployment
 

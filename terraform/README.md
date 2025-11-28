@@ -90,6 +90,28 @@ Important: This project uses Azure PostgreSQL Flexible Server for production. Th
 ```bash
 terraform init
 ```
+## Import existing resources into Terraform state (if any)
+
+If resources already exist in the subscription and you want Terraform to manage them, import them into Terraform state so they are recognized by future plans and applies.
+
+Example: if resources were previously created (or left from a prior run), run the following in the `terraform` directory (replace subscription-id and resource-group as needed):
+
+```bash
+SUBSCRIPTION_ID="<your-subscription-id>"
+RG="shortifyaf-rg"
+./import_resources.sh -s $SUBSCRIPTION_ID -g $RG
+```
+
+This script imports common resources created by the configuration (ACR, VNet, NSGs, Public IPs, Postgres). Edit the script if you added additional resources that should be imported.
+
+Alternatively you can import individual resources manually with `terraform import` using a fully qualified resource ID.
+
+Example:
+```bash
+terraform import 'module.acr.azurerm_container_registry.acr' \
+  "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.ContainerRegistry/registries/<acr-name>"
+```
+
 If you intend to use continuous deployment from GitHub Actions, configure a remote backend (e.g., Azure Storage) so the CI runner can access the Terraform state. Without a remote backend the GitHub workflow will not have access to the local state and `terraform output` will return "No outputs found".
 
 Example backend (Azure Storage) config in `terraform/backend.tf`:

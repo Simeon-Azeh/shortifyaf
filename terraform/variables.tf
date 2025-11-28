@@ -57,7 +57,7 @@ variable "admin_ssh_public_key" {
   type        = string
   default     = ""
   validation {
-    condition     = length(trim(var.admin_ssh_public_key)) > 0
+    condition     = length(trimspace(var.admin_ssh_public_key)) > 0
     error_message = "admin_ssh_public_key must be provided and cannot be empty. Set it in terraform.tfvars or as TF_VAR_admin_ssh_public_key environment variable."
   }
 }

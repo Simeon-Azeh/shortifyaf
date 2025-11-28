@@ -39,12 +39,15 @@ jobs:
           cd terraform
           terraform init
 
-          
+      - name: Set Terraform SSH public key env var
+        run: |
+          # Export as TF_VAR so terraform will pick it up across steps
+          echo "TF_VAR_admin_ssh_public_key=${{ secrets.AZURE_SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
+
       - name: Terraform Apply
         run: |
           cd terraform
-          terraform apply -auto-approve
-
+          terraform apply -var "admin_ssh_public_key=${{ secrets.AZURE_SSH_PUBLIC_KEY }}" -auto-approve
 
       - name: Get Terraform Outputs
         id: tf-outputs
@@ -70,7 +73,6 @@ jobs:
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
-
 
       - name: Login to Azure Container Registry
         run: |

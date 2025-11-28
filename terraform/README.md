@@ -52,6 +52,15 @@ export ARM_CLIENT_ID="<app-id>"
 export ARM_CLIENT_SECRET="<password>"
 export ARM_SUBSCRIPTION_ID="<subscription-id>"
 export ARM_TENANT_ID="<tenant-id>"
+
+#### Required SSH key secret for CI/CD
+If you will run Terraform from CI (GitHub Actions), make sure to add your SSH public key as a GitHub secret named `AZURE_SSH_PUBLIC_KEY` so the workflow can pass it to Terraform and provision VMs:
+
+```bash
+cat ~/.ssh/shortifyaf-key.pub | pbcopy  # macOS
+cat ~/.ssh/shortifyaf-key.pub | clip    # Windows PowerShell
+# then add it to GitHub repo secrets as AZURE_SSH_PUBLIC_KEY
+```
 ```
 
 ### 2. Create SSH Key Pair

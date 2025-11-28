@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./import_resources.sh -s <subscription_id> -g <resource_group>
-# Example: ./import_resources.sh -s a07834e8-091a-422c-a06e-04ca54a705fb -g shortifyaf-rg
+
 
 MODE="import"
 while getopts s:g:m: flag
@@ -51,7 +50,7 @@ terraform import 'module.compute.azurerm_public_ip.app_lb_pip[0]' "${SUBS}/Micro
 echo "Importing PostgreSQL Flexible Server..."
 terraform import 'module.postgres.azurerm_postgresql_flexible_server.postgres' "${SUBS}/Microsoft.DBforPostgreSQL/flexibleServers/shortifyaf-pg-dev" || true
 
-# Add additional imports as needed (network interfaces, NICs, etc.)
+
 
 # Show current state resources for confirmation
 terraform state list | sed -n '1,200p'

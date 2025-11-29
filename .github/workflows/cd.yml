@@ -75,14 +75,12 @@ jobs:
           cd terraform
           outputs_json=$(terraform output -json || echo '{}')
           ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
-          RESOURCE_GROUP=$(echo "$outputs_json" | jq -r '.resource_group_name.value // empty')
           BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
-          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$RESOURCE_GROUP" ] || [ -z "$BASTION_PUBLIC_IP" ]; then
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$BASTION_PUBLIC_IP" ]; then
             echo "Required Terraform outputs are missing. Did you apply the Terraform plan?"
             exit 1
           fi
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
-          echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
 
       - name: Login to Azure

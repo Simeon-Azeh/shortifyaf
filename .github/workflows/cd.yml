@@ -128,7 +128,7 @@ jobs:
 
       - name: Run Ansible playbook
         run: |
-          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa
+          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa --extra-vars "database_url=${{ secrets.DATABASE_URL }} frontend_url=http://${{ steps.tf-outputs.outputs.app_public_ip }}"
 
       # Option A: Use simplified SSH deployment (Recommended - remove Ansible)
       - name: Deploy application via SSH

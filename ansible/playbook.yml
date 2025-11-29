@@ -15,10 +15,10 @@
       raw: |
         set -e
         apt-get update -y
-        apt-get install -y software-properties-common -y
+        apt-get install -y software-properties-common
         add-apt-repository -y ppa:deadsnakes/ppa || true
         apt-get update -y
-        apt-get install -y python3.8 python3.8-venv python3.8-distutils python3.8-dev python3-pip -y || apt-get install -y python3 python3-pip -y
+        apt-get install -y python3.8 python3.8-venv python3.8-distutils python3.8-dev python3-pip || apt-get install -y python3 python3-pip
       when: python38_check.rc != 0
 
     - name: Re-check if python3.8 is available
@@ -36,8 +36,9 @@
       set_fact:
         ansible_python_interpreter: "/usr/bin/python3"
       when: python38_check_after.rc != 0
+
     - name: Gather facts after ensuring Python is installed
-      ansible.builtin.setup:
+      setup:
 
   tasks:
     - name: Check if Docker is installed
@@ -46,10 +47,17 @@
       failed_when: false
       changed_when: false
 
+    - name: Check if docker-compose is installed
+      command: which docker-compose
+      register: compose_installed
+      failed_when: false
+      changed_when: false
+
     - name: Install Docker and dependencies if missing
       block:
         - name: Update apt cache
-          apt: update_cache=yes
+          apt:
+            update_cache: yes
 
         - name: Install required packages
           apt:
@@ -57,7 +65,7 @@
               - curl
               - wget
               - git
-              - python3.8
+              - python3
               - python3-pip
               - build-essential
               - ca-certificates
@@ -66,12 +74,6 @@
               - apt-transport-https
               - software-properties-common
             state: present
-
-        - name: Set python3.8 as default python3
-          alternatives:
-            name: python3
-            path: /usr/bin/python3.8
-            priority: 1
 
         - name: Add Docker official GPG key
           apt_key:
@@ -91,6 +93,7 @@
               - docker-ce-cli
               - containerd.io
             state: present
+            update_cache: yes
 
         - name: Install Docker Compose
           get_url:
@@ -109,6 +112,7 @@
             name: docker
             state: started
             enabled: yes
+            daemon_reload: yes
 
         - name: Add azureuser to docker group
           user:
@@ -134,3 +138,53 @@
             group: azureuser
             mode: "0600"
       when: docker_installed.rc != 0
+
+    - name: Install docker-compose if missing
+      block:
+        - name: Download docker-compose v2 binary
+          get_url:
+            url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64"
+            dest: /usr/local/bin/docker-compose
+            mode: "0755"
+
+        - name: Create symlink for docker-compose
+          file:
+            src: /usr/local/bin/docker-compose
+            dest: /usr/bin/docker-compose
+            state: link
+      when: compose_installed.rc != 0
+
+    - name: Ensure app directory exists (unconditional)
+      file:
+        path: /home/azureuser/shortifyaf
+        state: directory
+        owner: azureuser
+        group: azureuser
+        mode: "0755"
+
+    - name: Create .env with provided vars (if any) - unconditional
+      copy:
+        dest: /home/azureuser/shortifyaf/.env
+        content: |
+          DATABASE_URL={{ database_url | default('') }}
+          FRONTEND_URL={{ frontend_url | default('') }}
+        owner: azureuser
+        group: azureuser
+        mode: "0600"
+      when: database_url is defined or frontend_url is defined
+
+    - name: Verify Docker service is running
+      command: systemctl is-active docker
+      register: docker_service
+      failed_when: docker_service.rc != 0
+
+    - name: Verify docker-compose is installed
+      command: docker-compose --version
+      register: docker_compose_ver
+      failed_when: docker_compose_ver.rc != 0
+
+    - name: Show installation results
+      debug:
+        msg:
+          - "Docker service: {{ docker_service.stdout }}"
+          - "Docker Compose: {{ docker_compose_ver.stdout }}"

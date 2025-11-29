@@ -68,11 +68,12 @@ jobs:
           terraform apply -input=false -auto-approve tfplan
 
       - name: Get Terraform Outputs
+        if: ${{ steps.tfplan.outputs.num_destroy == '0' }}
         id: tf-outputs
         run: |
           set -euo pipefail
           cd terraform
-          outputs_json=$(terraform output -json)
+          outputs_json=$(terraform output -json || echo '{}')
           ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
           RESOURCE_GROUP=$(echo "$outputs_json" | jq -r '.resource_group_name.value // empty')
           BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
@@ -165,7 +166,7 @@ jobs:
             shortifyaf-network:
               driver: bridge
           DOCKERCOMPOSE
-          
+
           docker-compose down
           docker-compose pull
           docker-compose up -d

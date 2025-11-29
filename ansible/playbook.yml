@@ -1,193 +1,35 @@
 ---
-- name: Ensure Docker and Dependencies are Installed
+- name: Configure App VM with Docker
   hosts: app_servers
   become: yes
 
   tasks:
-    - name: Check if Docker is installed
-      command: which docker
-      register: docker_installed
-      failed_when: false
-      changed_when: false
+    - name: Install Docker and dependencies
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - curl
+          - wget
+          - git
+          - python3
+          - python3-pip
+        state: present
+        update_cache: yes
 
-    - name: Check if docker-compose is installed
-      command: which docker-compose
-      register: compose_installed
-      failed_when: false
-      changed_when: false
+    - name: Start and enable Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
 
-    - name: Check if Azure CLI is installed
-      command: which az
-      register: az_installed
-      failed_when: false
-      changed_when: false
-
-    - name: Install Docker and dependencies if missing
-      block:
-        - name: Update apt cache
-          apt:
-            update_cache: yes
-
-        - name: Install required packages
-          apt:
-            name:
-              - curl
-              - wget
-              - git
-              - python3
-              - python3-pip
-              - python3-apt
-              - build-essential
-              - ca-certificates
-              - gnupg
-              - lsb-release
-              - apt-transport-https
-              - software-properties-common
-            state: present
-
-        - name: Add Docker official GPG key
-          apt_key:
-            url: https://download.docker.com/linux/ubuntu/gpg
-            state: present
-
-        - name: Add Docker repository
-          apt_repository:
-            repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-            state: present
-            filename: docker
-
-        - name: Install Docker Engine
-          apt:
-            name:
-              - docker-ce
-              - docker-ce-cli
-              - containerd.io
-            state: present
-            update_cache: yes
-
-        - name: Install Docker Compose
-          get_url:
-            url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64"
-            dest: /usr/local/bin/docker-compose
-            mode: "0755"
-
-        - name: Create symbolic link for docker-compose
-          file:
-            src: /usr/local/bin/docker-compose
-            dest: /usr/bin/docker-compose
-            state: link
-
-        - name: Ensure Docker service is running
-          systemd:
-            name: docker
-            state: started
-            enabled: yes
-            daemon_reload: yes
-
-        - name: Add azureuser to docker group
-          user:
-            name: azureuser
-            groups: docker
-            append: yes
-
-        - name: Create app directory
-          file:
-            path: /home/azureuser/shortifyaf
-            state: directory
-            owner: azureuser
-            group: azureuser
-            mode: "0755"
-
-        - name: Create .env with provided vars (if any)
-          copy:
-            dest: /home/azureuser/shortifyaf/.env
-            content: |
-              DATABASE_URL={{ database_url | default('') }}
-              FRONTEND_URL={{ frontend_url | default('') }}
-            owner: azureuser
-            group: azureuser
-            mode: "0600"
-      when: docker_installed.rc != 0
-
-    - name: Install docker-compose if missing
-      block:
-        - name: Download docker-compose v2 binary
-          get_url:
-            url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64"
-            dest: /usr/local/bin/docker-compose
-            mode: "0755"
-
-        - name: Create symlink for docker-compose
-          file:
-            src: /usr/local/bin/docker-compose
-            dest: /usr/bin/docker-compose
-            state: link
-      when: compose_installed.rc != 0
-
-    - name: Install Azure CLI if missing (Debian/Ubuntu)
-      block:
-        - name: Install python3-apt for apt module
-          raw: apt-get update && apt-get install -y python3-apt
-          args:
-            warn: false
-
-        - name: Install required packages for Azure CLI
-          apt:
-            name:
-              - curl
-              - gnupg
-              - lsb-release
-            state: present
-
-        - name: Download and install Microsoft signing key
-          shell: |
-            curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
-          args:
-            warn: false
-
-        - name: Add Azure CLI repository
-          shell: |
-            echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/azure-cli.list
-          args:
-            warn: false
-
-        - name: Update apt cache and install Azure CLI
-          apt:
-            name: azure-cli
-            state: present
-            update_cache: yes
-      when: az_installed.rc != 0
-
-    - name: Azure login using service principal (for ACR auth)
-      shell: |
-        az login --service-principal \
-          -u "{{ azure_client_id }}" \
-          -p "{{ azure_client_secret }}" \
-          --tenant "{{ azure_tenant_id }}" \
-          --output none
-      args:
-        warn: false
-      when:
-        - azure_client_id is defined
-        - azure_client_secret is defined
-        - azure_tenant_id is defined
-
-    - name: Get ACR name from login server
-      set_fact:
-        acr_name: "{{ acr_login_server.split('.')[0] }}"
-      when: acr_login_server is defined
-
-    - name: Login to ACR
-      shell: az acr login --name "{{ acr_name }}" --output none
-      when: acr_name is defined
-
-    - name: Ensure user is in docker group (always run)
+    - name: Add user to docker group
       user:
         name: azureuser
         groups: docker
         append: yes
 
-    - name: Ensure app directory exists (unconditional)
+    - name: Create app directory
       file:
         path: /home/azureuser/shortifyaf
         state: directory
@@ -195,7 +37,7 @@
         group: azureuser
         mode: "0755"
 
-    - name: Create .env with provided vars (if any) - unconditional
+    - name: Create .env file
       copy:
         dest: /home/azureuser/shortifyaf/.env
         content: |
@@ -205,19 +47,3 @@
         group: azureuser
         mode: "0600"
       when: database_url is defined or frontend_url is defined
-
-    - name: Verify Docker service is running
-      command: systemctl is-active docker
-      register: docker_service
-      failed_when: docker_service.rc != 0
-
-    - name: Verify docker-compose is installed
-      command: docker-compose --version
-      register: docker_compose_ver
-      failed_when: docker_compose_ver.rc != 0
-
-    - name: Show installation results
-      debug:
-        msg:
-          - "Docker service: {{ docker_service.stdout }}"
-          - "Docker Compose: {{ docker_compose_ver.stdout }}"

@@ -173,6 +173,15 @@ runcmd:
   - systemctl start docker
 CLOUD
   )
+
+  lifecycle {
+    # ignore changes to admin SSH key and cloud-init custom_data to avoid forced VM replacement
+    # when keys are rotated or init scripts change; manage key rotation manually if required
+    ignore_changes = [
+      admin_ssh_key,
+      custom_data,
+    ]
+  }
 }
 
 # Public load balancer to forward HTTP and API traffic into app private NIC

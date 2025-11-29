@@ -57,7 +57,7 @@ jobs:
       - name: Check for Destructive Changes
         if: steps.tfplan.outputs.num_destroy > 0
         run: |
-          echo "❌ DESTRUCTIVE CHANGES DETECTED: ${{ steps.tfplan.outputs.num_destroy }} resources will be destroyed/replaced"
+          echo " DESTRUCTIVE CHANGES DETECTED: ${{ steps.tfplan.outputs.num_destroy }} resources will be destroyed/replaced"
           echo "This pipeline will not proceed with destructive changes to prevent data loss"
           exit 1
 
@@ -75,13 +75,15 @@ jobs:
           outputs_json=$(terraform output -json)
           ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
           BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
+          APP_PRIVATE_IP=$(echo "$outputs_json" | jq -r '.app_private_ip.value // empty')
           APP_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.app_public_ip.value // empty')
-          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$BASTION_PUBLIC_IP" ] || [ -z "$APP_PUBLIC_IP" ]; then
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$BASTION_PUBLIC_IP" ] || [ -z "$APP_PRIVATE_IP" ] || [ -z "$APP_PUBLIC_IP" ]; then
             echo "Required Terraform outputs are missing. Did you apply the Terraform plan?"
             exit 1
           fi
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
+          echo "app_private_ip=$APP_PRIVATE_IP" >> $GITHUB_OUTPUT
           echo "app_public_ip=$APP_PUBLIC_IP" >> $GITHUB_OUTPUT
 
       - name: Login to Azure
@@ -113,12 +115,11 @@ jobs:
           echo "${{ secrets.AZURE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ steps.tf-outputs.outputs.bastion_public_ip }} >> ~/.ssh/known_hosts
-          ssh-keyscan -H ${{ steps.tf-outputs.outputs.app_public_ip }} >> ~/.ssh/known_hosts
 
       # Option A: Use simplified SSH deployment (Recommended - remove Ansible)
       - name: Deploy application via SSH
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.app_public_ip }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} << 'EOF'
             cd /home/azureuser/shortifyaf
             
             # Create docker-compose.yml with correct configuration

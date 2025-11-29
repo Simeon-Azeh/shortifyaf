@@ -126,6 +126,11 @@
 
     - name: Install Azure CLI if missing (Debian/Ubuntu)
       block:
+        - name: Install python3-apt for apt module
+          raw: apt-get update && apt-get install -y python3-apt
+          args:
+            warn: false
+
         - name: Install required packages for Azure CLI
           apt:
             name:
@@ -162,9 +167,9 @@
           --output none
       args:
         warn: false
-      when: 
-        - azure_client_id is defined 
-        - azure_client_secret is defined 
+      when:
+        - azure_client_id is defined
+        - azure_client_secret is defined
         - azure_tenant_id is defined
 
     - name: Get ACR name from login server

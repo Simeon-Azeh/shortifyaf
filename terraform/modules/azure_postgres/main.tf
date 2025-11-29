@@ -9,7 +9,8 @@ resource "random_password" "postgres_password" {
 }
 
 resource "azurerm_postgresql_flexible_server" "postgres" {
-  name                = "${var.project_name}-pg-${var.environment}"
+  # Include location in the name to avoid global name conflicts across regions
+  name                = "${var.project_name}-pg-${var.environment}-${replace(var.location, " ", "-") }"
   resource_group_name = var.resource_group_name
   location            = var.location
 

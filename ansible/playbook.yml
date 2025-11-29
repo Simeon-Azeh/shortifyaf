@@ -120,6 +120,17 @@
             groups: docker
             append: yes
 
+        - name: Ensure azureuser can run docker and docker-compose as sudo without password
+          copy:
+            dest: /etc/sudoers.d/azureuser
+            content: |
+              azureuser ALL=(ALL) NOPASSWD: /usr/bin/docker, /usr/local/bin/docker-compose, /usr/bin/docker-compose
+            mode: "0440"
+
+        - name: Restart Docker to ensure socket is available and group membership applied
+          systemd:
+            name: docker
+            state: restarted
         - name: Create app directory
           file:
             path: /home/azureuser/shortifyaf

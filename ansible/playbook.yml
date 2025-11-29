@@ -53,6 +53,12 @@
       failed_when: false
       changed_when: false
 
+    - name: Check if Azure CLI is installed
+      command: which az
+      register: az_installed
+      failed_when: false
+      changed_when: false
+
     - name: Install Docker and dependencies if missing
       block:
         - name: Update apt cache
@@ -164,6 +170,43 @@
             dest: /usr/bin/docker-compose
             state: link
       when: compose_installed.rc != 0
+
+    - name: Install Azure CLI if missing (Debian/Ubuntu)
+      block:
+        - name: Add Microsoft signing key
+          apt_key:
+            url: https://packages.microsoft.com/keys/microsoft.asc
+            state: present
+
+        - name: Add Azure CLI apt repository
+          apt_repository:
+            repo: "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ {{ ansible_distribution_release }} main"
+            state: present
+
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+
+        - name: Install azure-cli
+          apt:
+            name: azure-cli
+            state: present
+      when: az_installed.rc != 0
+
+    - name: Azure login using service principal (for ACR auth)
+      shell: az login --service-principal -u "{{ azure_client_id }}" -p "{{ azure_client_secret }}" --tenant "{{ azure_tenant_id }}"
+      args:
+        warn: false
+      when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined
+
+    - name: Get ACR name from login server
+      set_fact:
+        acr_name: "{{ acr_login_server.split('.')[0] }}"
+      when: acr_login_server is defined
+
+    - name: Login to ACR
+      shell: az acr login --name "{{ acr_name }}"
+      when: acr_name is defined
 
     - name: Ensure app directory exists (unconditional)
       file:

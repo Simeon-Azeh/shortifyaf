@@ -128,7 +128,7 @@ jobs:
 
       - name: Run Ansible playbook
         run: |
-          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa --extra-vars "database_url=${{ secrets.DATABASE_URL }} frontend_url=http://${{ steps.tf-outputs.outputs.app_public_ip }}"
+          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa --extra-vars "database_url=${{ secrets.DATABASE_URL }} frontend_url=http://${{ steps.tf-outputs.outputs.app_public_ip }} azure_client_id=${{ secrets.AZURE_CLIENT_ID }} azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }} azure_tenant_id=${{ secrets.AZURE_TENANT_ID }} acr_login_server=${{ steps.tf-outputs.outputs.acr_login_server }}"
 
       # Option A: Use simplified SSH deployment (Recommended - remove Ansible)
       - name: Deploy application via SSH
@@ -196,3 +196,13 @@ jobs:
           echo "Application deployed successfully!"
           echo "Frontend URL: http://${{ steps.tf-outputs.outputs.app_public_ip }}"
           echo "Backend API: http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001"
+      - name: Verify backend service health
+        run: |
+          set -euo pipefail
+          for i in {1..10}; do
+            if curl -fsS http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/api/health; then
+              echo "Backend healthy"; exit 0
+            fi
+            echo "Waiting for backend... ($i/10)"; sleep 5
+          done
+          echo "Backend did not become healthy in time"; exit 1

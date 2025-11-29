@@ -3,14 +3,11 @@ version: '3.8'
 services:
   # Backend API Service
   backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${ACR_LOGIN_SERVER}/shortifyaf-backend:latest  # Use pre-built image
     container_name: shortifyaf-backend
     restart: unless-stopped
     environment:
       PORT: 3001
-      # Use Azure Postgres via DATABASE_URL from your environment
       DATABASE_URL: "${DATABASE_URL}"
       FRONTEND_URL: http://68.221.143.187
     networks:
@@ -25,15 +22,11 @@ services:
 
   # Frontend Service
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: /api
+    image: ${ACR_LOGIN_SERVER}/shortifyaf-frontend:latest  # Use pre-built image
     container_name: shortifyaf-frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: /api
+      VITE_API_URL: http://backend:3001  # CORRECT: Use service name
     depends_on:
       - backend
     networks:

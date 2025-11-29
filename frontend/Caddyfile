@@ -1,3 +1,10 @@
 :80
 root * /srv
+
+# static files
 file_server
+
+# reverse-proxy API calls to the backend service on port 3001
+handle_path /api* {
+	reverse_proxy backend:3001
+}

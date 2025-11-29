@@ -87,6 +87,11 @@ router.post('/shorten', urlController.shortenUrl);
  */
 router.get('/history', urlController.getHistory);
 
+// Health check for /api/health
+router.get('/health', (req, res) => {
+    return res.json({ status: 'ok' });
+});
+
 /**
  * @swagger
  * /{shortId}:

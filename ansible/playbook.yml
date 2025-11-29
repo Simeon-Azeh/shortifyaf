@@ -2,21 +2,6 @@
 - name: Ensure Docker and Dependencies are Installed
   hosts: app_servers
   become: yes
-  gather_facts: false
-
-  pre_tasks:
-    - name: Check if python3 is available
-      raw: test -x /usr/bin/python3
-      register: python3_check
-      failed_when: false
-      changed_when: false
-
-    - name: Set ansible_python_interpreter to system python3
-      set_fact:
-        ansible_python_interpreter: "/usr/bin/python3"
-
-    - name: Gather facts after ensuring Python is installed
-      setup:
 
   tasks:
     - name: Check if Docker is installed
@@ -105,18 +90,6 @@
             groups: docker
             append: yes
 
-        - name: Ensure azureuser can run docker and docker-compose as sudo without password
-          copy:
-            dest: /etc/sudoers.d/azureuser
-            content: |
-              azureuser ALL=(ALL) NOPASSWD: /usr/bin/docker, /usr/local/bin/docker-compose, /usr/bin/docker-compose
-            mode: "0440"
-
-        - name: Restart Docker to ensure socket is available and group membership applied
-          systemd:
-            name: docker
-            state: restarted
-
         - name: Create app directory
           file:
             path: /home/azureuser/shortifyaf
@@ -161,21 +134,19 @@
               - lsb-release
             state: present
 
-        - name: Add Microsoft signing key
-          apt_key:
-            url: https://packages.microsoft.com/keys/microsoft.asc
-            state: present
+        - name: Download and install Microsoft signing key
+          shell: |
+            curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
+          args:
+            warn: false
 
-        - name: Add Azure CLI apt repository
-          apt_repository:
-            repo: "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ {{ ansible_distribution_release }} main"
-            state: present
+        - name: Add Azure CLI repository
+          shell: |
+            echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/azure-cli.list
+          args:
+            warn: false
 
-        - name: Update apt cache
-          apt:
-            update_cache: yes
-
-        - name: Install azure-cli
+        - name: Update apt cache and install Azure CLI
           apt:
             name: azure-cli
             state: present

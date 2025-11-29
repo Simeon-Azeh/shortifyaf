@@ -34,31 +34,45 @@ jobs:
           echo "ARM_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" >> $GITHUB_ENV
           echo "ARM_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" >> $GITHUB_ENV
-          echo "TF_VAR_azure_location=westeurope" >> $GITHUB_ENV
+          echo "TF_VAR_azure_location=spaincentral" >> $GITHUB_ENV
+          echo "TF_VAR_admin_ssh_public_key=${{ secrets.AZURE_SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
 
       - name: Terraform Init
         run: |
           cd terraform
           terraform init
 
-      - name: Set Terraform SSH public key env var
-        run: |
-          echo "TF_VAR_admin_ssh_public_key=${{ secrets.AZURE_SSH_PUBLIC_KEY }}" >> $GITHUB_ENV
-
-      - name: Terraform Apply
+      - name: Terraform Plan with Destruction Check
+        id: tfplan
         run: |
           cd terraform
-          terraform apply -auto-approve \
-            -var "admin_ssh_public_key=${{ secrets.AZURE_SSH_PUBLIC_KEY }}" \
+          terraform plan -input=false -out=tfplan -var "admin_ssh_public_key=${{ secrets.AZURE_SSH_PUBLIC_KEY }}" \
             -var "vm_size=Standard_D2s_v3" \
             -var "bastion_vm_size=Standard_D2s_v3"
+          terraform show -json tfplan > plan.json
+          NUM_DESTROY=$(jq '[.resource_changes[] | select(.change.actions[] | contains("delete") or contains("replace"))] | length' plan.json)
+          echo "num_destroy=$NUM_DESTROY" >> $GITHUB_OUTPUT
+          cat plan.json > plan-output.json
+
+      - name: Check for Destructive Changes
+        if: steps.tfplan.outputs.num_destroy > 0
+        run: |
+          echo "❌ DESTRUCTIVE CHANGES DETECTED: ${{ steps.tfplan.outputs.num_destroy }} resources will be destroyed/replaced"
+          echo "This pipeline will not proceed with destructive changes to prevent data loss"
+          exit 1
+
+      - name: Terraform Apply
+        if: steps.tfplan.outputs.num_destroy == 0
+        run: |
+          cd terraform
+          terraform apply -input=false -auto-approve tfplan
 
       - name: Get Terraform Outputs
         id: tf-outputs
         run: |
           set -euo pipefail
           cd terraform
-          outputs_json=$(terraform output -json || echo '{}')
+          outputs_json=$(terraform output -json)
           ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
           RESOURCE_GROUP=$(echo "$outputs_json" | jq -r '.resource_group_name.value // empty')
           BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
@@ -69,6 +83,13 @@ jobs:
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "resource_group=$RESOURCE_GROUP" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to Azure Container Registry
         run: |
@@ -81,7 +102,7 @@ jobs:
 
       - name: Build and push frontend image
         run: |
-          docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest --build-arg VITE_API_URL=/api ./frontend
+          docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest --build-arg VITE_API_URL=http://backend:3001 ./frontend
           docker push ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
 
       - name: Setup SSH Key
@@ -96,6 +117,11 @@ jobs:
           echo "[app_servers]" > ansible/inventory.ini
           echo "${{ steps.tf-outputs.outputs.bastion_public_ip }} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/inventory.ini
 
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
       - name: Run Ansible playbook
         run: |
           ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa
@@ -104,7 +130,43 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }} << 'EOF'
             cd /home/azureuser/shortifyaf
-            docker-compose down
-            docker-compose pull
-            docker-compose up -d
+            # Update docker-compose.yml with correct VITE_API_URL
+            cat > docker-compose.yml << 'DOCKERCOMPOSE'
+          version: '3.8'
+
+          services:
+            backend:
+              image: ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-backend:latest
+              container_name: shortifyaf-backend
+              restart: unless-stopped
+              environment:
+                PORT: 3001
+                DATABASE_URL: "${{ secrets.DATABASE_URL }}"
+                FRONTEND_URL: http://${{ steps.tf-outputs.outputs.bastion_public_ip }}
+              networks:
+                - shortifyaf-network
+              ports:
+                - "3001:3001"
+
+            frontend:
+              image: ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
+              container_name: shortifyaf-frontend
+              restart: unless-stopped
+              environment:
+                VITE_API_URL: http://backend:3001
+              depends_on:
+                - backend
+              networks:
+                - shortifyaf-network
+              ports:
+                - "80:80"
+
+          networks:
+            shortifyaf-network:
+              driver: bridge
+          DOCKERCOMPOSE
+          
+          docker-compose down
+          docker-compose pull
+          docker-compose up -d
           EOF

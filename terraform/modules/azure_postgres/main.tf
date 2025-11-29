@@ -24,6 +24,10 @@ resource "azurerm_postgresql_flexible_server" "postgres" {
   zone = "2"
 
   public_network_access_enabled = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # Open firewall rule to the whole world is NOT recommended; limit to 0.0.0.0/0 would allow everything.

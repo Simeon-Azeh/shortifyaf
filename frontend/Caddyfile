@@ -5,6 +5,7 @@ root * /srv
 file_server
 
 # reverse-proxy API calls to the backend service on port 3001
-handle_path /api* {
+# Use `handle` to preserve the `/api` prefix so the Node backend routes under `/api` still match.
+handle /api* {
 	reverse_proxy backend:3001
 }

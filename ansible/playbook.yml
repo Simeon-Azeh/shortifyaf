@@ -2,8 +2,42 @@
 - name: Ensure Docker and Dependencies are Installed
   hosts: app_servers
   become: yes
-  vars:
-    ansible_python_interpreter: /usr/bin/python3.8
+  gather_facts: false
+
+  pre_tasks:
+    - name: Check if python3.8 is available
+      raw: test -x /usr/bin/python3.8
+      register: python38_check
+      failed_when: false
+      changed_when: false
+
+    - name: Install Python 3.8 if missing (Debian/Ubuntu)
+      raw: |
+        set -e
+        apt-get update -y
+        apt-get install -y software-properties-common -y
+        add-apt-repository -y ppa:deadsnakes/ppa || true
+        apt-get update -y
+        apt-get install -y python3.8 python3.8-venv python3.8-distutils python3.8-dev python3-pip -y || apt-get install -y python3 python3-pip -y
+      when: python38_check.rc != 0
+
+    - name: Re-check if python3.8 is available
+      raw: test -x /usr/bin/python3.8
+      register: python38_check_after
+      failed_when: false
+      changed_when: false
+
+    - name: Set ansible_python_interpreter to python3.8 if present
+      set_fact:
+        ansible_python_interpreter: "/usr/bin/python3.8"
+      when: python38_check_after.rc == 0
+
+    - name: Set ansible_python_interpreter to python3 if python3.8 not present
+      set_fact:
+        ansible_python_interpreter: "/usr/bin/python3"
+      when: python38_check_after.rc != 0
+    - name: Gather facts after ensuring Python is installed
+      ansible.builtin.setup:
 
   tasks:
     - name: Check if Docker is installed
@@ -89,4 +123,14 @@
             owner: azureuser
             group: azureuser
             mode: "0755"
+
+        - name: Create .env with provided vars (if any)
+          copy:
+            dest: /home/azureuser/shortifyaf/.env
+            content: |
+              DATABASE_URL={{ database_url | default('') }}
+              FRONTEND_URL={{ frontend_url | default('') }}
+            owner: azureuser
+            group: azureuser
+            mode: "0600"
       when: docker_installed.rc != 0

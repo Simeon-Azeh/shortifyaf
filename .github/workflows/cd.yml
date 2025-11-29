@@ -68,22 +68,21 @@ jobs:
           terraform apply -input=false -auto-approve tfplan
 
       - name: Get Terraform Outputs
-        if: ${{ steps.tfplan.outputs.num_destroy == '0' }}
         id: tf-outputs
         run: |
           set -euo pipefail
           cd terraform
-          outputs_json=$(terraform output -json || echo '{}')
+          outputs_json=$(terraform output -json)
           ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
           BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
-          APP_PRIVATE_IP=$(echo "$outputs_json" | jq -r '.app_private_ip.value // empty')
-          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$BASTION_PUBLIC_IP" ] || [ -z "$APP_PRIVATE_IP" ]; then
+          APP_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.app_public_ip.value // empty')
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$BASTION_PUBLIC_IP" ] || [ -z "$APP_PUBLIC_IP" ]; then
             echo "Required Terraform outputs are missing. Did you apply the Terraform plan?"
             exit 1
           fi
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
-          echo "app_private_ip=$APP_PRIVATE_IP" >> $GITHUB_OUTPUT
+          echo "app_public_ip=$APP_PUBLIC_IP" >> $GITHUB_OUTPUT
 
       - name: Login to Azure
         uses: azure/login@v1
@@ -103,7 +102,9 @@ jobs:
 
       - name: Build and push frontend image
         run: |
-          docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest --build-arg VITE_API_URL=http://backend:3001 ./frontend
+          docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest \
+            --build-arg VITE_API_URL=http://backend:3001 \
+            ./frontend
           docker push ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
 
       - name: Setup SSH Key
@@ -112,26 +113,15 @@ jobs:
           echo "${{ secrets.AZURE_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ steps.tf-outputs.outputs.bastion_public_ip }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ steps.tf-outputs.outputs.app_public_ip }} >> ~/.ssh/known_hosts
 
-      - name: Update Ansible inventory
+      # Option A: Use simplified SSH deployment (Recommended - remove Ansible)
+      - name: Deploy application via SSH
         run: |
-          echo "[app_servers]" > ansible/inventory.ini
-          echo "${{ steps.tf-outputs.outputs.app_private_ip }} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}\"'" >> ansible/inventory.ini
-
-      - name: Install Ansible
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ansible
-
-      - name: Run Ansible playbook
-        run: |
-          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa
-
-      - name: Deploy application
-        run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.app_public_ip }} << 'EOF'
             cd /home/azureuser/shortifyaf
-            # Update docker-compose.yml with correct VITE_API_URL
+            
+            # Create docker-compose.yml with correct configuration
             cat > docker-compose.yml << 'DOCKERCOMPOSE'
           version: '3.8'
 
@@ -143,11 +133,16 @@ jobs:
               environment:
                 PORT: 3001
                 DATABASE_URL: "${{ secrets.DATABASE_URL }}"
-                FRONTEND_URL: http://${{ steps.tf-outputs.outputs.bastion_public_ip }}
+                FRONTEND_URL: http://${{ steps.tf-outputs.outputs.app_public_ip }}
               networks:
                 - shortifyaf-network
               ports:
                 - "3001:3001"
+              healthcheck:
+                test: ["CMD", "node", "healthcheck.js"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
 
             frontend:
               image: ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
@@ -167,7 +162,22 @@ jobs:
               driver: bridge
           DOCKERCOMPOSE
 
-          docker-compose down
-          docker-compose pull
-          docker-compose up -d
+            # Stop, pull latest images, and restart
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d
+            
+            # Wait for services to start
+            sleep 10
+            
+            # Check if services are healthy
+            docker-compose ps
+            docker-compose logs backend
           EOF
+
+      # Optional: Health check
+      - name: Health check application
+        run: |
+          echo "Application deployed successfully!"
+          echo "Frontend URL: http://${{ steps.tf-outputs.outputs.app_public_ip }}"
+          echo "Backend API: http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001"

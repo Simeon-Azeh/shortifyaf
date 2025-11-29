@@ -76,12 +76,14 @@ jobs:
           outputs_json=$(terraform output -json || echo '{}')
           ACR_LOGIN_SERVER=$(echo "$outputs_json" | jq -r '.acr_login_server.value // empty')
           BASTION_PUBLIC_IP=$(echo "$outputs_json" | jq -r '.bastion_public_ip.value // empty')
-          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$BASTION_PUBLIC_IP" ]; then
+          APP_PRIVATE_IP=$(echo "$outputs_json" | jq -r '.app_private_ip.value // empty')
+          if [ -z "$ACR_LOGIN_SERVER" ] || [ -z "$BASTION_PUBLIC_IP" ] || [ -z "$APP_PRIVATE_IP" ]; then
             echo "Required Terraform outputs are missing. Did you apply the Terraform plan?"
             exit 1
           fi
           echo "acr_login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
           echo "bastion_public_ip=$BASTION_PUBLIC_IP" >> $GITHUB_OUTPUT
+          echo "app_private_ip=$APP_PRIVATE_IP" >> $GITHUB_OUTPUT
 
       - name: Login to Azure
         uses: azure/login@v1
@@ -114,7 +116,7 @@ jobs:
       - name: Update Ansible inventory
         run: |
           echo "[app_servers]" > ansible/inventory.ini
-          echo "${{ steps.tf-outputs.outputs.bastion_public_ip }} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/inventory.ini
+          echo "${{ steps.tf-outputs.outputs.app_private_ip }} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}\"'" >> ansible/inventory.ini
 
       - name: Install Ansible
         run: |
@@ -127,7 +129,7 @@ jobs:
 
       - name: Deploy application
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} << 'EOF'
             cd /home/azureuser/shortifyaf
             # Update docker-compose.yml with correct VITE_API_URL
             cat > docker-compose.yml << 'DOCKERCOMPOSE'

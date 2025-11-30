@@ -149,23 +149,18 @@ jobs:
             
             # Configure Docker to avoid credential store issues
             mkdir -p ~/.docker
-            cat > ~/.docker/config.json << 'DOCKERCONFIG'
+            AUTH_B64=$(echo -n "${{ steps.tf-outputs.outputs.acr_admin_username }}:${{ steps.tf-outputs.outputs.acr_admin_password }}" | base64 -w 0)
+            cat > ~/.docker/config.json << DOCKER_EOF
             {
               "auths": {
                 "${{ steps.tf-outputs.outputs.acr_login_server }}": {
-                  "auth": "$(echo -n ${{ steps.tf-outputs.outputs.acr_admin_username }}:${{ steps.tf-outputs.outputs.acr_admin_password }} | base64 -w 0)"
+                  "auth": "$AUTH_B64"
                 }
               },
               "credsStore": "",
               "credHelpers": {}
             }
-            DOCKERCONFIG
-            
-            # Alternative login method (use one or the other)
-            # echo "${{ steps.tf-outputs.outputs.acr_admin_password }}" | \
-            #   docker login ${{ steps.tf-outputs.outputs.acr_login_server }} \
-            #   --username ${{ steps.tf-outputs.outputs.acr_admin_username }} \
-            #   --password-stdin
+            DOCKER_EOF
             
             # Pull and deploy
             docker-compose pull

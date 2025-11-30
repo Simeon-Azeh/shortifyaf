@@ -93,11 +93,32 @@
       register: docker_compose_version
       changed_when: false
 
-    - name: Display installation versions
-      debug:
-        msg:
-          - "Docker Version: {{ docker_version.stdout }}"
-          - "Docker Compose Version: {{ docker_compose_version.stdout }}"
+    - name: Install Azure CLI prerequisites
+      raw: |
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y ca-certificates curl apt-transport-https lsb-release gnupg
+      args:
+        warn: false
+
+    - name: Add Microsoft apt key
+      raw: |
+        curl -sL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
+      args:
+        warn: false
+
+    - name: Add Azure CLI apt repository
+      raw: |
+        echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/azure-cli.list
+      args:
+        warn: false
+
+    - name: Install Azure CLI
+      raw: |
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -y
+        apt-get install -y azure-cli
+      args:
+        warn: false
 
     - name: Create application directory
       file:

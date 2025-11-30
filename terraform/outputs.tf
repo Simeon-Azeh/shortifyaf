@@ -33,6 +33,17 @@ output "acr_login_server" {
   value       = module.acr.acr_login_server
 }
 
+output "acr_admin_username" {
+  description = "Admin username for Azure Container Registry"
+  value       = module.acr.acr_admin_username
+}
+
+output "acr_admin_password" {
+  description = "Admin password for Azure Container Registry"
+  value       = module.acr.acr_admin_password
+  sensitive   = true
+}
+
 /* duplicates removed */
 
 output "app_dns_name" {

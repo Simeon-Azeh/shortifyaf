@@ -92,7 +92,7 @@
         state: directory
         owner: azureuser
         group: azureuser
-        mode: '0755'
+        mode: "0755"
 
     - name: Copy docker-compose.yml
       copy:
@@ -100,7 +100,7 @@
         dest: /home/azureuser/shortifyaf/docker-compose.yml
         owner: azureuser
         group: azureuser
-        mode: '0644'
+        mode: "0644"
 
     - name: Create environment file
       copy:
@@ -114,13 +114,16 @@
           FRONTEND_URL={{ frontend_url }}
         owner: azureuser
         group: azureuser
-        mode: '0600'
+        mode: "0600"
 
     - name: Login to Azure Container Registry
-      docker_login:
-        registry: "{{ acr_login_server }}"
-        username: "{{ azure_client_id }}"
-        password: "{{ azure_client_secret }}"
+      shell: |
+        az login --service-principal -u "{{ azure_client_id }}" -p "{{ azure_client_secret }}" --tenant "{{ azure_tenant_id }}" --output none
+        acr_name="{{ acr_login_server.split('.')[0] }}"
+        az acr login --name "$acr_name" --output none
+      args:
+        warn: false
+      when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined and acr_login_server is defined
 
     - name: Pull Docker images
       shell: |

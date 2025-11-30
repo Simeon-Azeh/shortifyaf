@@ -15,29 +15,24 @@
       setup:
 
   tasks:
-    - name: Ensure apt can run non-interactively
-      environment:
-        DEBIAN_FRONTEND: noninteractive
+    - name: Update apt cache
       apt:
         update_cache: yes
         cache_valid_time: 3600
+      environment:
+        DEBIAN_FRONTEND: "noninteractive"
 
-    - name: Install Docker and base dependencies
+    - name: Install Docker and dependencies
       apt:
         name:
           - docker.io
+          - docker-compose
           - curl
           - wget
           - git
-          - apt-transport-https
-          - ca-certificates
-          - gnupg
         state: present
-        update_cache: yes
       environment:
-        DEBIAN_FRONTEND: noninteractive
-      register: apt_install_result
-      failed_when: apt_install_result is failed
+        DEBIAN_FRONTEND: "noninteractive"
 
     - name: Start and enable Docker service
       systemd:
@@ -59,180 +54,84 @@
         group: azureuser
         mode: "0755"
 
-    - name: Create .env file with all required variables
+    - name: Copy docker-compose.yml from root directory
       copy:
-        dest: /home/azureuser/shortifyaf/.env
-        content: |
-          PORT=3001
-          DATABASE_URL={{ database_url | default('') }}
-          FRONTEND_URL={{ frontend_url | default('http://68.221.143.187/') }}
-          AZURE_CLIENT_ID={{ azure_client_id | default('') }}
-          AZURE_CLIENT_SECRET={{ azure_client_secret | default('') }}
-          AZURE_TENANT_ID={{ azure_tenant_id | default('') }}
-          ACR_LOGIN_SERVER={{ acr_login_server | default('') }}
-        owner: azureuser
-        group: azureuser
-        mode: "0600"
-
-    - name: Create docker-compose.yml file
-      copy:
+        src: "{{ playbook_dir }}/../docker-compose.yml"
         dest: /home/azureuser/shortifyaf/docker-compose.yml
-        content: |
-          version: '3.8'
-          services:
-            backend:
-              image: ${ACR_LOGIN_SERVER}/shortifyaf-backend:latest
-              ports:
-                - "3001:3001"
-              environment:
-                - PORT=3001
-                - DATABASE_URL=${DATABASE_URL}
-                - FRONTEND_URL=${FRONTEND_URL}
-                - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
-                - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-                - AZURE_TENANT_ID=${AZURE_TENANT_ID}
-              restart: unless-stopped
-
-            frontend:
-              image: ${ACR_LOGIN_SERVER}/shortifyaf-frontend:latest
-              ports:
-                - "80:5173"
-              environment:
-                - VITE_API_URL=http://backend:3001
-              restart: unless-stopped
-              depends_on:
-                - backend
         owner: azureuser
         group: azureuser
         mode: "0644"
 
-    - name: Install docker-compose standalone binary (compat for scripts using docker-compose)
-      get_url:
-        url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64"
-        dest: /usr/local/bin/docker-compose
-        mode: "0755"
-      args:
-        warn: false
+    - name: Create .env file with all required variables
+      copy:
+        dest: /home/azureuser/shortifyaf/.env
+        content: |
+          ACR_LOGIN_SERVER={{ acr_login_server | default('') }}
+          DATABASE_URL={{ database_url | default('') }}
+          AZURE_CLIENT_ID={{ azure_client_id | default('') }}
+          AZURE_CLIENT_SECRET={{ azure_client_secret | default('') }}
+          AZURE_TENANT_ID={{ azure_tenant_id | default('') }}
+        owner: azureuser
+        group: azureuser
+        mode: "0600"
 
-    - name: Create symlink for docker-compose (hyphen) to ensure compatibility
-      file:
-        src: /usr/local/bin/docker-compose
-        dest: /usr/bin/docker-compose
-        state: link
+    - name: Login to Azure Container Registry
+      docker_login:
+        registry: "{{ acr_login_server }}"
+        username: "{{ azure_client_id }}"
+        password: "{{ azure_client_secret }}"
 
-    - name: Install Azure CLI prerequisites
-      apt:
-        name:
-          - ca-certificates
-          - curl
-          - apt-transport-https
-          - lsb-release
-          - gnupg
-        state: present
-        update_cache: yes
-
-    - name: Add Microsoft apt key
-      apt_key:
-        url: https://packages.microsoft.com/keys/microsoft.asc
-        state: present
-
-    - name: Add Azure CLI apt repository
-      apt_repository:
-        repo: "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main"
-        state: present
-
-    - name: Install Azure CLI
-      apt:
-        name: azure-cli
-        state: present
-        update_cache: yes
-
-    - name: Login to Azure using Service Principal (for ACR auth)
+    - name: Pull Docker images
       shell: |
-        az login --service-principal -u "{{ azure_client_id }}" -p "{{ azure_client_secret }}" --tenant "{{ azure_tenant_id }}" --output none
-      args:
-        warn: false
-      when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined
+        cd /home/azureuser/shortifyaf
+        docker compose pull
+      environment:
+        DOCKER_CLIENT_TIMEOUT: "120"
+        COMPOSE_HTTP_TIMEOUT: "120"
 
-    - name: Get ACR name from login server
-      set_fact:
-        acr_name: "{{ acr_login_server.split('.')[0] }}"
-      when: acr_login_server is defined
-
-    - name: Login to ACR as root using az (stores credentials for root user)
+    - name: Start containers with docker compose
       shell: |
-        set -e
-        TOKEN=$(az acr login --name "{{ acr_name }}" --expose-token --output tsv --query accessToken)
-        echo "$TOKEN" | docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
-      args:
-        warn: false
-      become: yes
-      when: acr_name is defined
+        cd /home/azureuser/shortifyaf
+        docker compose up -d
+      environment:
+        DOCKER_CLIENT_TIMEOUT: "120"
+        COMPOSE_HTTP_TIMEOUT: "120"
 
-    - name: If az acr login fails, use admin credentials to docker login (fallback)
-      block:
-        - name: Get ACR admin username
-          shell: az acr credential show -n "{{ acr_name }}" --query username -o tsv
-          register: acr_admin_user
-          changed_when: false
-        - name: Get ACR admin password
-          shell: az acr credential show -n "{{ acr_name }}" --query passwords[0].value -o tsv
-          register: acr_admin_pass
-          changed_when: false
-        - name: Login to docker with ACR admin credentials as root
-          shell: echo "{{ acr_admin_pass.stdout }}" | docker login {{ acr_login_server }} --username {{ acr_admin_user.stdout }} --password-stdin
-          become: yes
-      rescue:
-        - name: Debug register fallback failure
-          debug:
-            msg: "Failed to login to ACR via admin credentials"
-      when: acr_name is defined
-    - name: Pull and start containers with docker compose V2
-      community.docker.docker_compose_v2:
-        project_src: /home/azureuser/shortifyaf
-        files:
-          - docker-compose.yml
-        pull: yes
-        state: present
+    - name: Wait for containers to be running
+      shell: |
+        cd /home/azureuser/shortifyaf
+        docker compose ps --services --filter "status=running"
+      register: running_services
+      until: running_services.stdout_lines | length >= 2
+      retries: 12
+      delay: 10
 
-    - name: Wait for backend to be healthy
+    - name: Wait for backend port to be available
       wait_for:
         port: 3001
         host: localhost
         delay: 5
         timeout: 60
+        state: started
 
-    - name: Check application status
-      block:
-        - name: Request backend health endpoint
-          uri:
-            url: http://localhost:3001/health
-            method: GET
-            status_code: 200
-          register: health_check
-          until: health_check.status == 200
-          retries: 10
-          delay: 5
-      rescue:
-        - name: Show backend logs to debug startup failure
-          shell: docker compose -f /home/azureuser/shortifyaf/docker-compose.yml logs backend --no-color || docker logs $(docker ps -q --filter "name=shortifyaf-backend")
-          register: backend_logs
-        - name: Display backend logs
-          debug:
-            var: backend_logs.stdout
-        - name: Show container ps
-          command: docker ps -a
-          register: all_containers
-        - name: Display container ps
-          debug:
-            var: all_containers.stdout
-        - name: Fail the play with helpful message
-          fail:
-            msg: "Backend health check failed; see logs above for details"
+    - name: Wait for frontend port to be available
+      wait_for:
+        port: 80
+        host: localhost
+        delay: 5
+        timeout: 60
+        state: started
 
-    - name: Display application status
-      debug:
-        msg: "Application deployed successfully! Backend running on port 3001, Frontend on port 80"
+    - name: Check backend health endpoint
+      uri:
+        url: http://localhost:3001/health
+        method: GET
+        status_code: 200
+      register: health_check
+      until: health_check.status == 200
+      retries: 10
+      delay: 5
+      ignore_errors: yes
 
     - name: Show running containers
       command: docker ps
@@ -241,3 +140,21 @@
     - name: Display container status
       debug:
         var: container_status.stdout
+
+    - name: Check docker compose services status
+      shell: |
+        cd /home/azureuser/shortifyaf
+        docker compose ps
+      register: compose_status
+
+    - name: Display docker compose status
+      debug:
+        var: compose_status.stdout
+
+    - name: Display application URLs
+      debug:
+        msg: |
+          Application deployment completed!
+          Backend API: http://{{ ansible_host }}:3001
+          Frontend URL: http://{{ ansible_host }}
+          Health check: http://{{ ansible_host }}:3001/health

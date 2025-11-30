@@ -138,7 +138,7 @@
     - name: Configure Docker to not use credential helpers
       raw: |
         mkdir -p /home/azureuser/.docker
-        echo '{"credsStore":""}' > /home/azureuser/.docker/config.json
+        echo '{}' > /home/azureuser/.docker/config.json
         chown azureuser:azureuser /home/azureuser/.docker/config.json
         chmod 600 /home/azureuser/.docker/config.json
       args:
@@ -172,7 +172,7 @@
 
     - name: Login to Azure Container Registry with token
       shell: |
-        echo "{{ acr_token.stdout | trim }}" | docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
+        echo "{{ acr_token.stdout | trim }}" | docker --config /home/azureuser/.docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
       environment:
         DOCKER_CONFIG: /home/azureuser/.docker
       become: true
@@ -180,7 +180,7 @@
 
     - name: Verify ACR login by pulling a test image
       shell: |
-        docker pull {{ acr_login_server }}/shortifyaf-backend:latest || true
+        docker --config /home/azureuser/.docker pull {{ acr_login_server }}/shortifyaf-backend:latest || true
       register: pull_test
       changed_when: pull_test.rc == 0
       failed_when: false
@@ -204,10 +204,21 @@
       debug:
         var: acr_repos.stdout
 
+    - name: Verify Docker config used by azureuser
+      shell: |
+        cat /home/azureuser/.docker/config.json
+      register: docker_config_contents
+      become: true
+      become_user: azureuser
+
+    - name: Show Docker config (masked)
+      debug:
+        msg: "Docker config: {{ docker_config_contents.stdout }}"
+
     - name: Pull Docker images
       shell: |
         cd /home/azureuser/shortifyaf
-        docker-compose pull
+        docker-compose --config /home/azureuser/.docker pull
       become: true
       become_user: azureuser
       environment:
@@ -218,7 +229,7 @@
     - name: Start application with Docker Compose
       shell: |
         cd /home/azureuser/shortifyaf
-        docker-compose up -d
+        docker-compose --config /home/azureuser/.docker up -d
       become: true
       become_user: azureuser
       environment:

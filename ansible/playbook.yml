@@ -172,7 +172,7 @@
 
     - name: Login to Azure Container Registry with token
       shell: |
-        echo "{{ acr_token.stdout | trim }}" | docker --config /home/azureuser/.docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
+        echo "{{ acr_token.stdout | trim }}" | docker --config /home/azureuser/.docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin --disable-credential-helper
       environment:
         DOCKER_CONFIG: /home/azureuser/.docker
       become: true

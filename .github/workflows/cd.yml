@@ -138,65 +138,95 @@ jobs:
             --private-key ~/.ssh/id_rsa \
             --extra-vars "database_url=${{ secrets.DATABASE_URL }} frontend_url=http://${{ steps.tf-outputs.outputs.app_public_ip }} azure_client_id=${{ secrets.AZURE_CLIENT_ID }} azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }} azure_tenant_id=${{ secrets.AZURE_TENANT_ID }} acr_login_server=${{ steps.tf-outputs.outputs.acr_login_server }} acr_admin_username=${{ steps.tf-outputs.outputs.acr_admin_username }} acr_admin_password=${{ steps.tf-outputs.outputs.acr_admin_password }}"
 
-      - name: Deploy application via SSH
+      - name: Create deployment script
+        run: |
+          cat > deploy.sh << 'SCRIPT_EOF'
+          #!/bin/bash
+          set -e
+          cd /home/azureuser/shortifyaf
+          
+          # Configure Docker to avoid credential store issues
+          mkdir -p ~/.docker
+          AUTH_B64=$(echo -n "${{ steps.tf-outputs.outputs.acr_admin_username }}:${{ steps.tf-outputs.outputs.acr_admin_password }}" | base64 -w 0)
+          cat > ~/.docker/config.json << DOCKER_EOF
+          {
+            "auths": {
+              "${{ steps.tf-outputs.outputs.acr_login_server }}": {
+                "auth": "$AUTH_B64"
+              }
+            },
+            "credsStore": "",
+            "credHelpers": {}
+          }
+          DOCKER_EOF
+          
+          # Pull and deploy
+          echo "Pulling latest images..."
+          docker-compose pull
+          echo "Starting services..."
+          docker-compose up -d
+          
+          # Wait for services with better error handling
+          echo "Waiting for services to start..."
+          for i in {1..12}; do
+            if docker-compose ps --services --filter "status=running" | grep -q "backend" && \
+               docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
+              echo "✓ All services are running"
+              break
+            fi
+            echo "Waiting for services... ($i/12)"
+            sleep 10
+          done
+          
+          # Final status check
+          echo "Current container status:"
+          docker-compose ps
+          
+          # Additional health checks
+          echo "Checking service health..."
+          if docker-compose ps --services --filter "status=running" | grep -q "backend" && \
+             docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
+            echo "✓ Deployment completed successfully"
+            echo "Frontend should be available at: http://$(curl -s ifconfig.me)"
+            echo "Backend health check: http://$(curl -s ifconfig.me):3001/health"
+          else
+            echo "✗ Some services failed to start"
+            docker-compose logs
+            exit 1
+          fi
+          SCRIPT_EOF
+
+      - name: Copy and run deployment script
+        run: |
+          scp -i ~/.ssh/id_rsa \
+            -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" \
+            -o StrictHostKeyChecking=no \
+            deploy.sh azureuser@${{ steps.tf-outputs.outputs.app_private_ip }}:/home/azureuser/deploy.sh
+          
+          ssh -i ~/.ssh/id_rsa \
+            -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" \
+            -o StrictHostKeyChecking=no \
+            azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} "chmod +x /home/azureuser/deploy.sh && /home/azureuser/deploy.sh"
+
+      - name: Check running services
         run: |
           ssh -i ~/.ssh/id_rsa \
             -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" \
             -o StrictHostKeyChecking=no \
             azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} << 'EOF'
-            set -e
-            cd /home/azureuser/shortifyaf
-            
-            # Configure Docker to avoid credential store issues
-            mkdir -p ~/.docker
-            AUTH_B64=$(echo -n "${{ steps.tf-outputs.outputs.acr_admin_username }}:${{ steps.tf-outputs.outputs.acr_admin_password }}" | base64 -w 0)
-            cat > ~/.docker/config.json << DOCKER_EOF
-            {
-              "auths": {
-                "${{ steps.tf-outputs.outputs.acr_login_server }}": {
-                  "auth": "$AUTH_B64"
-                }
-              },
-              "credsStore": "",
-              "credHelpers": {}
-            }
-            DOCKER_EOF
-            
-            # Pull and deploy
-            docker-compose pull
-            docker-compose up -d
-            
-            # Wait for services with better error handling
-            echo "Waiting for services to start..."
-            for i in {1..12}; do
-              if docker-compose ps --services --filter "status=running" | grep -q "backend" && \
-                 docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
-                echo "✓ All services are running"
-                break
-              fi
-              echo "Waiting for services... ($i/12)"
-              sleep 10
-            done
-            
-            # Final status check
-            echo "Current container status:"
-            docker-compose ps
-            
-            # Additional health checks
-            echo "Checking service health..."
-            if docker-compose ps --services --filter "status=running" | grep -q "backend" && \
-               docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
-              echo "✓ Deployment completed successfully"
-            else
-              echo "✗ Some services failed to start"
-              docker-compose logs
-              exit 1
-            fi
+          echo "=== Checking running containers ==="
+          docker ps
+          echo "=== Checking docker-compose status ==="
+          cd /home/azureuser/shortifyaf && docker-compose ps
+          echo "=== Checking port listening ==="
+          sudo netstat -tulpn | grep -E ':(80|3001)'
+          echo "=== Checking firewall rules ==="
+          sudo ufw status
           EOF
 
       - name: Health check application
         run: |
-          echo "Application deployed successfully!"
+          echo "Application deployment completed!"
           echo "Frontend URL: http://${{ steps.tf-outputs.outputs.app_public_ip }}"
           echo "Backend API: http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001"
           echo "Health check: http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health"
@@ -205,18 +235,33 @@ jobs:
         run: |
           set -e
           echo "Performing health checks on backend service..."
-          for i in {1..10}; do
-            if curl -f -s http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health > /dev/null; then
+          for i in {1..15}; do
+            if curl -f -s --connect-timeout 10 http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health > /dev/null; then
               echo "✓ Backend service is healthy"
               echo "Backend response:"
-              curl -s http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health | head -c 100
+              curl -s http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health
               echo ""
               exit 0
             fi
-            echo "Waiting for backend to become healthy... ($i/10)"
+            echo "Waiting for backend to become healthy... ($i/15)"
             sleep 10
           done
           echo "✗ Backend service did not become healthy within the expected time"
           echo "Debug information:"
-          curl -v http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health || true
+          curl -v --connect-timeout 5 http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health || echo "Curl failed"
+          exit 1
+
+      - name: Verify frontend service
+        run: |
+          set -e
+          echo "Performing health checks on frontend service..."
+          for i in {1..10}; do
+            if curl -f -s --connect-timeout 10 http://${{ steps.tf-outputs.outputs.app_public_ip }}/ > /dev/null; then
+              echo "✓ Frontend service is accessible"
+              exit 0
+            fi
+            echo "Waiting for frontend to become accessible... ($i/10)"
+            sleep 5
+          done
+          echo "✗ Frontend service did not become accessible within the expected time"
           exit 1

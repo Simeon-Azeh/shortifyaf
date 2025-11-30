@@ -121,88 +121,36 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ansible
 
-      - name: Update Ansible inventory
+      - name: Create Ansible inventory
         run: |
-          echo "[app_servers]" > ansible/inventory.ini
-          echo "${{ steps.tf-outputs.outputs.app_private_ip }} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}\" -o StrictHostKeyChecking=no'" >> ansible/inventory.ini
-
-      - name: Run Ansible playbook
-        run: |
-          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --private-key ~/.ssh/id_rsa --extra-vars "database_url=${{ secrets.DATABASE_URL }} frontend_url=http://${{ steps.tf-outputs.outputs.app_public_ip }} azure_client_id=${{ secrets.AZURE_CLIENT_ID }} azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }} azure_tenant_id=${{ secrets.AZURE_TENANT_ID }} acr_login_server=${{ steps.tf-outputs.outputs.acr_login_server }}"
-
-      # Option A: Use simplified SSH deployment (Recommended - remove Ansible)
-      - name: Deploy application via SSH
-        run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} << 'EOF'
-            cd /home/azureuser/shortifyaf
-            
-            # Create docker-compose.yml with correct configuration
-            cat > docker-compose.yml << 'DOCKERCOMPOSE'
-          version: '3.8'
-
-          services:
-            backend:
-              image: ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-backend:latest
-              container_name: shortifyaf-backend
-              restart: unless-stopped
-              environment:
-                PORT: 3001
-                DATABASE_URL: "${{ secrets.DATABASE_URL }}"
-                FRONTEND_URL: http://${{ steps.tf-outputs.outputs.app_public_ip }}
-              networks:
-                - shortifyaf-network
-              ports:
-                - "3001:3001"
-              healthcheck:
-                test: ["CMD", "node", "healthcheck.js"]
-                interval: 30s
-                timeout: 10s
-                retries: 3
-
-            frontend:
-              image: ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
-              container_name: shortifyaf-frontend
-              restart: unless-stopped
-              environment:
-                VITE_API_URL: http://backend:3001
-              depends_on:
-                - backend
-              networks:
-                - shortifyaf-network
-              ports:
-                - "80:80"
-
-          networks:
-            shortifyaf-network:
-              driver: bridge
-          DOCKERCOMPOSE
-
-            # Stop, pull latest images, and restart
-            sudo docker-compose down
-            sudo docker-compose pull
-            sudo docker-compose up -d
-            
-            # Wait for services to start
-            sleep 10
-            
-            # Check if services are healthy
-            docker-compose ps
-            docker-compose logs backend
+          cat > ansible/inventory.ini << EOF
+          [app_servers]
+          ${{ steps.tf-outputs.outputs.app_private_ip }} ansible_user=azureuser ansible_ssh_private_key_file=~/.ssh/id_rsa ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}"'
           EOF
 
-      # Optional: Health check
+      - name: Run Ansible playbook to configure VM
+        run: |
+          ansible-playbook -i ansible/inventory.ini ansible/playbook.yml \
+            --private-key ~/.ssh/id_rsa \
+            --extra-vars "database_url=${{ secrets.DATABASE_URL }} frontend_url=http://${{ steps.tf-outputs.outputs.app_public_ip }} azure_client_id=${{ secrets.AZURE_CLIENT_ID }} azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }} azure_tenant_id=${{ secrets.AZURE_TENANT_ID }} acr_login_server=${{ steps.tf-outputs.outputs.acr_login_server }}"
+
       - name: Health check application
         run: |
           echo "Application deployed successfully!"
           echo "Frontend URL: http://${{ steps.tf-outputs.outputs.app_public_ip }}"
           echo "Backend API: http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001"
-      - name: Verify backend service health
+          echo "Health check: http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health"
+
+      - name: Verify backend service
         run: |
-          set -euo pipefail
+          set -e
           for i in {1..10}; do
-            if curl -fsS http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/api/health; then
-              echo "Backend healthy"; exit 0
+            if curl -f -s http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health > /dev/null; then
+              echo "✓ Backend service is healthy"
+              exit 0
             fi
-            echo "Waiting for backend... ($i/10)"; sleep 5
+            echo "Waiting for backend... ($i/10)"
+            sleep 10
           done
-          echo "Backend did not become healthy in time"; exit 1
+          echo "✗ Backend service did not become healthy"
+          exit 1

@@ -1,37 +1,23 @@
 - name: Configure App VM with Docker
   hosts: app_servers
   become: yes
-  vars:
-    ansible_python_interpreter: /usr/bin/python3
   gather_facts: no
 
   pre_tasks:
-    - name: Ensure Python 3.8 is installed (Debian/Ubuntu)
+    - name: Ensure Python 3 is available
       raw: |
         set -e
-        if ! command -v python3.8 >/dev/null 2>&1; then
+        if ! command -v python3 >/dev/null 2>&1; then
           apt-get update -y
-          apt-get install -y software-properties-common
-          add-apt-repository -y ppa:deadsnakes/ppa
-          apt-get update -y
-          apt-get install -y python3.8 python3.8-distutils python3.8-venv
+          apt-get install -y python3 python3-apt
         fi
       args:
         warn: false
 
-    - name: Set Ansible Python interpreter to Python 3.8
-      set_fact:
-        ansible_python_interpreter: /usr/bin/python3.8
-
-    - name: Gather facts with Python 3.8
+    - name: Gather facts
       setup:
 
   tasks:
-    - name: Install python3-apt for system Python
-      apt:
-        name: python3-apt
-        state: present
-
     - name: Install Docker and dependencies
       apt:
         name:

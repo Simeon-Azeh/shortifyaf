@@ -138,9 +138,10 @@
     - name: Configure Docker to not use credential helpers
       raw: |
         mkdir -p /home/azureuser/.docker
-        echo '{"credsStore":""}' > /home/azureuser/.docker/config.json
+        echo '{}' > /home/azureuser/.docker/config.json
         chown azureuser:azureuser /home/azureuser/.docker/config.json
         chmod 600 /home/azureuser/.docker/config.json
+        apt-get remove --purge -y docker-credential-secretservice golang-docker-credential-helpers || true
       args:
         warn: false
 

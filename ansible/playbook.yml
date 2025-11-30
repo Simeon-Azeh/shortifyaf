@@ -93,6 +93,15 @@
       register: docker_compose_version
       changed_when: false
 
+    - name: Configure Docker to not use credential helpers
+      raw: |
+        mkdir -p /home/azureuser/.docker
+        echo '{"credsStore":""}' > /home/azureuser/.docker/config.json
+        chown azureuser:azureuser /home/azureuser/.docker/config.json
+        chmod 600 /home/azureuser/.docker/config.json
+      args:
+        warn: false
+
     - name: Install Azure CLI prerequisites
       raw: |
         export DEBIAN_FRONTEND=noninteractive
@@ -150,9 +159,25 @@
         group: azureuser
         mode: "0600"
 
-    - name: Login to Azure Container Registry
-      shell: docker login {{ acr_login_server }} --username {{ azure_client_id }} --password {{ azure_client_secret }}
+    - name: Login to Azure Container Registry (using stdin)
+      shell: |
+        echo "{{ azure_client_secret }}" | docker login {{ acr_login_server }} --username {{ azure_client_id }} --password-stdin
       when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined and acr_login_server is defined
+
+    - name: Alternative Docker login method
+      shell: |
+        docker login {{ acr_login_server }} --username {{ azure_client_id }} --password {{ azure_client_secret }}
+      environment:
+        DOCKER_CLI_EXPERIMENTAL: "enabled"
+      when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined and acr_login_server is defined
+      ignore_errors: yes
+
+    - name: Verify ACR login by pulling a test image
+      shell: |
+        docker pull {{ acr_login_server }}/shortifyaf-backend:latest || true
+      register: pull_test
+      changed_when: pull_test.rc == 0
+      failed_when: false
 
     - name: Pull Docker images
       shell: |

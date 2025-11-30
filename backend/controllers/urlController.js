@@ -1,20 +1,24 @@
 const Url = require('../models/urlModel');
 
 exports.shortenUrl = async (req, res) => {
+    console.log('Shorten URL request received:', req.body);
     const { url } = req.body;
 
     // Basic validation
     if (!url) {
+        console.log('URL is required but not provided');
         return res.status(400).json({ error: 'URL is required' });
     }
 
     try {
         new URL(url); // Validate URL format
     } catch (err) {
+        console.log('Invalid URL format:', url);
         return res.status(400).json({ error: 'Invalid URL format' });
     }
 
     try {
+        console.log('Attempting to shorten URL:', url);
         // Generate short ID
         let shortId = Math.random().toString(36).substr(2, 6);
 
@@ -26,14 +30,17 @@ exports.shortenUrl = async (req, res) => {
         }
 
         // Save to database
+        console.log('Saving URL to database with shortId:', shortId);
         await Url.insertUrl(shortId, url);
 
         // Build the public short URL using FRONTEND_URL when available.
         // FRONTEND_URL is set in production (terraform) to the ALB domain; locally it falls back to the request host.
         const base = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
         const shortUrl = `${base.replace(/\/$/, '')}/${shortId}`;
+        console.log('Generated short URL:', shortUrl);
         res.json({ shortUrl });
     } catch (error) {
+        console.error('Error in shortenUrl:', error);
         res.status(500).json({ error: 'Server error' });
     }
 };

@@ -15,12 +15,20 @@
       setup:
 
   tasks:
+    - name: Check if Docker is already installed
+      command: which docker
+      register: docker_check
+      failed_when: false
+      changed_when: false
+
     - name: Update package cache
       raw: |
         export DEBIAN_FRONTEND=noninteractive
         timeout 300 apt-get update -y
       args:
         warn: false
+      when: docker_check.rc != 0
+      ignore_errors: true
 
     - name: Install required system packages
       raw: |

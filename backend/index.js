@@ -71,6 +71,11 @@ app.get('/api/test-db', async (req, res) => {
     }
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
 // Redirect route for short URLs
 const urlController = require('./controllers/urlController');
 app.get('/:shortId', urlController.redirectUrl);

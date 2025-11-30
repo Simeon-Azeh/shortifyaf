@@ -9,3 +9,17 @@ file_server
 handle /api* {
 	reverse_proxy backend:3001
 }
+
+# Handle short URL redirects (6-character alphanumeric strings)
+handle /api/test-db {
+	reverse_proxy backend:3001
+}
+
+handle /health {
+	reverse_proxy backend:3001
+}
+
+# Handle short URLs (assuming 6-character alphanumeric)
+handle /[a-zA-Z0-9]{6} {
+	reverse_proxy backend:3001
+}

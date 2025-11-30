@@ -133,11 +133,21 @@
         group: azureuser
         mode: "0600"
 
-    - name: Login to Azure with service principal
-      shell: az login --service-principal --username {{ azure_client_id }} --password {{ azure_client_secret }} --tenant {{ azure_tenant_id }} --output none
+    - name: Configure Docker to not use credential helpers
+      raw: |
+        mkdir -p /home/azureuser/.docker
+        echo '{"credsStore":""}' > /home/azureuser/.docker/config.json
+        chown azureuser:azureuser /home/azureuser/.docker/config.json
+        chmod 600 /home/azureuser/.docker/config.json
+      args:
+        warn: false
 
-    - name: Login to Azure Container Registry
-      shell: az acr login --name {{ acr_login_server | regex_replace('\.azurecr\.io', '') }} --output none
+    - name: Get ACR access token
+      shell: az acr login --name {{ acr_login_server | regex_replace('\.azurecr\.io', '') }} --expose-token --output tsv
+      register: acr_token
+
+    - name: Login to Azure Container Registry with token
+      shell: echo "{{ acr_token.stdout }}" | docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
 
     - name: Verify ACR login by pulling a test image
       shell: |

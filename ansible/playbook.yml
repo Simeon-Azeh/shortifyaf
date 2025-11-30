@@ -15,12 +15,29 @@
       setup:
 
   tasks:
-    - name: Install Docker and dependencies using raw commands
-      raw: |
-        apt-get update -y
-        apt-get install -y docker.io docker-compose-plugin curl wget git
-      args:
-        warn: false
+    - name: Ensure apt can run non-interactively
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Docker and base dependencies
+      apt:
+        name:
+          - docker.io
+          - curl
+          - wget
+          - git
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+        state: present
+        update_cache: yes
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      register: apt_install_result
+      failed_when: apt_install_result is failed
 
     - name: Start and enable Docker service
       systemd:

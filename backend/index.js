@@ -1,7 +1,6 @@
 require('dotenv').config();
-console.log('Starting application, loading db...');
+const express = require('express');
 const db = require('./db');
-console.log('DB module loaded');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const cors = require('cors');

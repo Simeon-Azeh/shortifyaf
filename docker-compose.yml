@@ -6,10 +6,18 @@ services:
     image: ${ACR_LOGIN_SERVER}/shortifyaf-backend:latest  # Use pre-built image
     container_name: shortifyaf-backend
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       PORT: 3001
+      PGHOST: shortifyaf-pg-dev-spaincentral.postgres.database.azure.com
+      PGUSER: shortify_user
+      PGPASSWORD: Testing123!
+      PGDATABASE: shortifyaf
+      PGPORT: 5432
+      FRONTEND_URL: http://68.221.143.187
+      ACR_LOGIN_SERVER: ${ACR_LOGIN_SERVER}
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID}
     networks:
       - shortifyaf-network
     ports:

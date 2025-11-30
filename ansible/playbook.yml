@@ -150,16 +150,8 @@
         group: azureuser
         mode: "0600"
 
-    - name: Create Azure config directory
-      file:
-        path: /tmp/azure-config
-        state: directory
-        mode: "0700"
-
     - name: Login to Azure Container Registry
-      shell: az acr login --name "{{ acr_login_server.split('.')[0] }}" --username "{{ azure_client_id }}" --password "{{ azure_client_secret }}" --output none
-      environment:
-        AZURE_CONFIG_DIR: /tmp/azure-config
+      shell: docker login {{ acr_login_server }} --username {{ azure_client_id }} --password {{ azure_client_secret }}
       when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined and acr_login_server is defined
 
     - name: Pull Docker images

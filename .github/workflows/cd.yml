@@ -138,6 +138,41 @@ jobs:
             --private-key ~/.ssh/id_rsa \
             --extra-vars "database_url=${{ secrets.DATABASE_URL }} frontend_url=http://${{ steps.tf-outputs.outputs.app_public_ip }} azure_client_id=${{ secrets.AZURE_CLIENT_ID }} azure_client_secret=${{ secrets.AZURE_CLIENT_SECRET }} azure_tenant_id=${{ secrets.AZURE_TENANT_ID }} acr_login_server=${{ steps.tf-outputs.outputs.acr_login_server }} acr_admin_username=${{ steps.tf-outputs.outputs.acr_admin_username }} acr_admin_password=${{ steps.tf-outputs.outputs.acr_admin_password }}"
 
+      - name: Deploy application via SSH
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+            -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} << 'EOF'
+            set -e
+            cd /home/azureuser/shortifyaf
+            
+            # Login to ACR
+            echo "${{ steps.tf-outputs.outputs.acr_admin_password }}" | docker login ${{ steps.tf-outputs.outputs.acr_login_server }} --username ${{ steps.tf-outputs.outputs.acr_admin_username }} --password-stdin
+            
+            # Pull images
+            docker-compose pull
+            
+            # Start services
+            docker-compose up -d
+            
+            # Wait for services
+            echo "Waiting for services to start..."
+            for i in {1..12}; do
+              if docker-compose ps --services --filter "status=running" | grep -q "backend" && docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
+                echo "Services are running"
+                break
+              fi
+              echo "Waiting... ($i/12)"
+              sleep 10
+            done
+            
+            # Show status
+            docker-compose ps
+            docker ps
+          EOF
+
       - name: Health check application
         run: |
           echo "Application deployed successfully!"

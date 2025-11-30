@@ -4,78 +4,33 @@
   gather_facts: no
 
   pre_tasks:
-    - name: Ensure system Python 3 and dependencies are available
+    - name: Ensure system Python 3 is available
       raw: |
         set -e
-        # Check and install Python 3 with proper apt integration
-        command -v python3 || (apt-get update -y && apt-get install -y python3 python3-apt python3-distutils)
-        
-        # Fix potential apt_pkg module issue
-        if ! python3 -c "import apt_pkg" 2>/dev/null; then
-          apt-get install -y --reinstall python3-apt
-        fi
+        # Install Python and fix apt dependencies
+        apt-get update || true
+        apt-get install -y python3 python3-apt python3-distutils
+        # Ensure apt_pkg is available
+        apt-get install -y --reinstall python3-apt
       args:
         warn: false
-      changed_when: false
 
     - name: Gather facts
       setup:
 
   tasks:
-    - name: Fix Python-APT integration if needed
+    - name: Update system using raw command (bypass apt module)
       raw: |
-        # Check if apt_pkg module is properly linked
-        if [ ! -f /usr/lib/python3/dist-packages/apt_pkg.cpython-*-x86_64-linux-gnu.so ]; then
-          # Reinstall python3-apt to fix broken links
-          apt-get install -y --reinstall python3-apt
-          # Alternative fix: create symlink if needed
-          find /usr/lib/python3* -name "apt_pkg*.so" -exec ln -sf {} /usr/lib/python3/dist-packages/apt_pkg.so \; 2>/dev/null || true
-        fi
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -y
+        apt-get install -y docker.io docker-compose curl wget git
       args:
         warn: false
-      when: ansible_facts['python_version'] is defined
-      ignore_errors: yes
 
-    - name: Update apt cache (with error handling)
-      block:
-        - name: Update apt cache
-          apt:
-            update_cache: yes
-            cache_valid_time: 3600
-          environment:
-            DEBIAN_FRONTEND: "noninteractive"
-      
-      rescue:
-        - name: Fix apt issues and retry
-          raw: |
-            # Clean up any broken apt state
-            pkill -f apt || true
-            rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/lock
-            apt-get clean
-            # Reinstall python3-apt to ensure proper integration
-            apt-get install -y --reinstall python3-apt
-          args:
-            warn: false
-        
-        - name: Retry apt cache update
-          apt:
-            update_cache: yes
-            cache_valid_time: 3600
-          environment:
-            DEBIAN_FRONTEND: "noninteractive"
-
-    - name: Install Docker and dependencies
-      apt:
-        name:
-          - docker.io
-          - docker-compose
-          - curl
-          - wget
-          - git
-          - python3-apt  # Ensure this is installed
-        state: present
-      environment:
-        DEBIAN_FRONTEND: "noninteractive"
+    - name: Verify apt_pkg module is working
+      raw: python3 -c "import apt_pkg; print('apt_pkg module is working')"
+      register: apt_pkg_check
+      changed_when: false
 
     - name: Start and enable Docker service
       systemd:

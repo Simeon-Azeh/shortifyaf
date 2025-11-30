@@ -114,6 +114,8 @@
         clone: yes
         update: yes
       register: clone_result
+      become: true
+      become_user: azureuser
 
     - name: Display clone status
       debug:
@@ -142,12 +144,39 @@
       args:
         warn: false
 
+    - name: Login to Azure with service principal
+      shell: az login --service-principal --username {{ azure_client_id }} --password {{ azure_client_secret }} --tenant {{ azure_tenant_id }} --output none
+      become: true
+      become_user: azureuser
+      environment:
+        AZURE_CONFIG_DIR: /home/azureuser/.azure
+
     - name: Get ACR access token
-      shell: az acr login --name {{ acr_login_server | regex_replace('\.azurecr\.io', '') }} --expose-token --output tsv
+      shell: az acr login --name {{ acr_login_server | regex_replace('\\.azurecr\\.io', '') }} --expose-token --query accessToken -o tsv
       register: acr_token
+      changed_when: false
+      become: true
+      become_user: azureuser
+      environment:
+        AZURE_CONFIG_DIR: /home/azureuser/.azure
+
+    - name: Debug ACR token length (non-sensitive)
+      debug:
+        msg: "ACR token length: {{ acr_token.stdout | length }}"
+      when: acr_token.stdout is defined
+
+    - name: Fail if ACR token is empty
+      fail:
+        msg: "ACR token is empty; 'az acr login --expose-token' might have failed or SP auth isn't working."
+      when: acr_token.stdout | default('') == ''
 
     - name: Login to Azure Container Registry with token
-      shell: echo "{{ acr_token.stdout }}" | docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
+      shell: |
+        echo "{{ acr_token.stdout | trim }}" | docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
+      environment:
+        DOCKER_CONFIG: /home/azureuser/.docker
+      become: true
+      become_user: azureuser
 
     - name: Verify ACR login by pulling a test image
       shell: |
@@ -155,6 +184,10 @@
       register: pull_test
       changed_when: pull_test.rc == 0
       failed_when: false
+      become: true
+      become_user: azureuser
+      environment:
+        DOCKER_CONFIG: /home/azureuser/.docker
 
     - name: Display available images in ACR
       shell: |
@@ -162,6 +195,10 @@
       register: acr_repos
       failed_when: false
       ignore_errors: yes
+      become: true
+      become_user: azureuser
+      environment:
+        AZURE_CONFIG_DIR: /home/azureuser/.azure
 
     - name: Display ACR repository list
       debug:
@@ -171,17 +208,23 @@
       shell: |
         cd /home/azureuser/shortifyaf
         docker-compose pull
+      become: true
+      become_user: azureuser
       environment:
         DOCKER_CLIENT_TIMEOUT: "120"
         COMPOSE_HTTP_TIMEOUT: "120"
+        DOCKER_CONFIG: /home/azureuser/.docker
 
     - name: Start application with Docker Compose
       shell: |
         cd /home/azureuser/shortifyaf
         docker-compose up -d
+      become: true
+      become_user: azureuser
       environment:
         DOCKER_CLIENT_TIMEOUT: "120"
         COMPOSE_HTTP_TIMEOUT: "120"
+        DOCKER_CONFIG: /home/azureuser/.docker
 
     - name: Wait for services to start
       shell: |
@@ -191,6 +234,10 @@
       until: running_services.stdout_lines | length >= 2
       retries: 12
       delay: 10
+      become: true
+      become_user: azureuser
+      environment:
+        DOCKER_CONFIG: /home/azureuser/.docker
 
     - name: Wait for backend port
       wait_for:
@@ -231,6 +278,10 @@
         cd /home/azureuser/shortifyaf
         docker-compose ps
       register: compose_status
+      become: true
+      become_user: azureuser
+      environment:
+        DOCKER_CONFIG: /home/azureuser/.docker
 
     - name: Display docker compose status
       debug:

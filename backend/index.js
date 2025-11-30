@@ -57,8 +57,17 @@ const swaggerSpecs = swaggerJsdoc(swaggerOptions);
 // Initialize PostgreSQL (create tables if needed)
 db.init().then(() => {
     console.log('Postgres DB ready');
+    console.log('Environment check:');
+    console.log('- PORT:', process.env.PORT);
+    console.log('- FRONTEND_URL:', process.env.FRONTEND_URL);
+    console.log('- DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    console.log('- DATABASE_URL starts with:', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'undefined');
 }).catch(err => {
     console.error('Postgres connection error:', err);
+    console.error('Environment variables:');
+    console.error('- DATABASE_URL:', process.env.DATABASE_URL ? 'Set (length: ' + process.env.DATABASE_URL.length + ')' : 'Not set');
+    console.error('- PORT:', process.env.PORT);
+    console.error('- FRONTEND_URL:', process.env.FRONTEND_URL);
 });
 
 app.use(express.json());
@@ -69,6 +78,17 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 // Routes
 const urlRoutes = require('./routes/urlRoutes');
 app.use('/api', urlRoutes);
+
+// Test database connection
+app.get('/api/test-db', async (req, res) => {
+    try {
+        const result = await db.query('SELECT NOW()');
+        res.json({ status: 'Database connected', time: result.rows[0] });
+    } catch (error) {
+        console.error('Database test error:', error);
+        res.status(500).json({ error: 'Database connection failed', details: error.message });
+    }
+});
 
 // Redirect route for short URLs
 const urlController = require('./controllers/urlController');

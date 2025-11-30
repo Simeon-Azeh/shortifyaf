@@ -144,7 +144,7 @@ jobs:
           #!/bin/bash
           set -e
           cd /home/azureuser/shortifyaf
-          
+
           # Configure Docker to avoid credential store issues
           mkdir -p ~/.docker
           AUTH_B64=$(echo -n "${{ steps.tf-outputs.outputs.acr_admin_username }}:${{ steps.tf-outputs.outputs.acr_admin_password }}" | base64 -w 0)
@@ -159,13 +159,13 @@ jobs:
             "credHelpers": {}
           }
           DOCKER_EOF
-          
+
           # Pull and deploy
           echo "Pulling latest images..."
           docker-compose pull
           echo "Starting services..."
           docker-compose up -d
-          
+
           # Wait for services with better error handling
           echo "Waiting for services to start..."
           for i in {1..12}; do
@@ -177,11 +177,11 @@ jobs:
             echo "Waiting for services... ($i/12)"
             sleep 10
           done
-          
+
           # Final status check
           echo "Current container status:"
           docker-compose ps
-          
+
           # Additional health checks
           echo "Checking service health..."
           if docker-compose ps --services --filter "status=running" | grep -q "backend" && \
@@ -202,7 +202,7 @@ jobs:
             -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" \
             -o StrictHostKeyChecking=no \
             deploy.sh azureuser@${{ steps.tf-outputs.outputs.app_private_ip }}:/home/azureuser/deploy.sh
-          
+
           ssh -i ~/.ssh/id_rsa \
             -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" \
             -o StrictHostKeyChecking=no \

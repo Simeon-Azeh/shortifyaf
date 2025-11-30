@@ -8,9 +8,28 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS configuration
+// CORS configuration - allow frontend origin and localhost for development
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    // Allow the public IP if it's set
+    process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace('http://', '').split(':')[0] : null,
+].filter(Boolean);
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin) || allowedOrigins.some(allowed => origin.includes(allowed))) {
+            return callback(null, true);
+        }
+
+        console.log('CORS blocked origin:', origin);
+        console.log('Allowed origins:', allowedOrigins);
+        return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true
 }));
 

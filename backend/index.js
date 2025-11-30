@@ -8,28 +8,9 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// CORS configuration - allow frontend origin and localhost for development
-const allowedOrigins = [
-    process.env.FRONTEND_URL,
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    // Allow the public IP if it's set
-    process.env.FRONTEND_URL ? process.env.FRONTEND_URL.replace('http://', '').split(':')[0] : null,
-].filter(Boolean);
-
+// CORS configuration - allow all origins for now
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-
-        if (allowedOrigins.includes(origin) || allowedOrigins.some(allowed => origin.includes(allowed))) {
-            return callback(null, true);
-        }
-
-        console.log('CORS blocked origin:', origin);
-        console.log('Allowed origins:', allowedOrigins);
-        return callback(new Error('Not allowed by CORS'));
-    },
+    origin: true, // Allow all origins
     credentials: true
 }));
 
@@ -101,9 +82,17 @@ app.get('/', (req, res) => {
 
 // Only start the server if this file is run directly (not when required as a module)
 if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
-        console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+    // Test database connection before starting server
+    db.query('SELECT 1').then(() => {
+        console.log('Database connection test successful');
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+            console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+        });
+    }).catch(err => {
+        console.error('Database connection test failed:', err);
+        console.error('Server will not start due to database connection failure');
+        process.exit(1);
     });
 }
 

@@ -1,23 +1,32 @@
 - name: Configure App VM with Docker
   hosts: app_servers
   become: yes
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
   gather_facts: no
 
   pre_tasks:
-    - name: Ensure Python 3 is available
+    - name: Ensure system Python 3 and python3-apt are installed
       raw: |
         set -e
-        if ! command -v python3 >/dev/null 2>&1; then
-          apt-get update -y
-          apt-get install -y python3 python3-apt
-        fi
+        apt-get update -y
+        apt-get install -y python3 python3-apt
       args:
         warn: false
 
-    - name: Gather facts
+    - name: Set Ansible to use system Python 3
+      set_fact:
+        ansible_python_interpreter: /usr/bin/python3
+
+    - name: Gather facts with system Python
       setup:
 
   tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
     - name: Install Docker and dependencies
       apt:
         name:
@@ -27,7 +36,6 @@
           - wget
           - git
         state: present
-        update_cache: yes
 
     - name: Start and enable Docker service
       systemd:

@@ -138,41 +138,15 @@
     - name: Configure Docker to not use credential helpers
       raw: |
         mkdir -p /home/azureuser/.docker
-        echo '{}' > /home/azureuser/.docker/config.json
+        echo '{"credsStore":""}' > /home/azureuser/.docker/config.json
         chown azureuser:azureuser /home/azureuser/.docker/config.json
         chmod 600 /home/azureuser/.docker/config.json
       args:
         warn: false
 
-    - name: Login to Azure with service principal
-      shell: az login --service-principal --username {{ azure_client_id }} --password {{ azure_client_secret }} --tenant {{ azure_tenant_id }} --output none
-      become: true
-      become_user: azureuser
-      environment:
-        AZURE_CONFIG_DIR: /home/azureuser/.azure
-
-    - name: Get ACR access token
-      shell: az acr login --name {{ acr_login_server | regex_replace('\\.azurecr\\.io', '') }} --expose-token --query accessToken -o tsv
-      register: acr_token
-      changed_when: false
-      become: true
-      become_user: azureuser
-      environment:
-        AZURE_CONFIG_DIR: /home/azureuser/.azure
-
-    - name: Debug ACR token length (non-sensitive)
-      debug:
-        msg: "ACR token length: {{ acr_token.stdout | length }}"
-      when: acr_token.stdout is defined
-
-    - name: Fail if ACR token is empty
-      fail:
-        msg: "ACR token is empty; 'az acr login --expose-token' might have failed or SP auth isn't working."
-      when: acr_token.stdout | default('') == ''
-
-    - name: Login to Azure Container Registry with token
+    - name: Simple Docker login with service principal
       shell: |
-        echo "{{ acr_token.stdout | trim }}" | docker --config /home/azureuser/.docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin --disable-credential-helper
+        echo "{{ azure_client_secret }}" | docker login {{ acr_login_server }} --username {{ azure_client_id }} --password-stdin
       environment:
         DOCKER_CONFIG: /home/azureuser/.docker
       become: true
@@ -180,7 +154,7 @@
 
     - name: Verify ACR login by pulling a test image
       shell: |
-        docker --config /home/azureuser/.docker pull {{ acr_login_server }}/shortifyaf-backend:latest || true
+        docker pull {{ acr_login_server }}/shortifyaf-backend:latest || true
       register: pull_test
       changed_when: pull_test.rc == 0
       failed_when: false
@@ -189,53 +163,42 @@
       environment:
         DOCKER_CONFIG: /home/azureuser/.docker
 
-    - name: Display available images in ACR
-      shell: |
-        az acr repository list --name {{ acr_login_server | regex_replace('\\.azurecr\\.io', '') }} --output tsv
-      register: acr_repos
-      failed_when: false
-      ignore_errors: yes
-      become: true
-      become_user: azureuser
-      environment:
-        AZURE_CONFIG_DIR: /home/azureuser/.azure
-
-    - name: Display ACR repository list
+    - name: Display pull test result
       debug:
-        var: acr_repos.stdout
+        var: pull_test
 
-    - name: Verify Docker config used by azureuser
+    - name: Check what images are available locally
       shell: |
-        cat /home/azureuser/.docker/config.json
-      register: docker_config_contents
+        docker images
+      register: local_images
       become: true
       become_user: azureuser
 
-    - name: Show Docker config (masked)
+    - name: Display local images
       debug:
-        msg: "Docker config: {{ docker_config_contents.stdout }}"
+        var: local_images.stdout
 
-    - name: Pull Docker images
+    - name: Pull Docker images using docker-compose
       shell: |
         cd /home/azureuser/shortifyaf
-        docker-compose --config /home/azureuser/.docker pull
-      become: true
-      become_user: azureuser
+        docker-compose pull
       environment:
         DOCKER_CLIENT_TIMEOUT: "120"
         COMPOSE_HTTP_TIMEOUT: "120"
         DOCKER_CONFIG: /home/azureuser/.docker
+      become: true
+      become_user: azureuser
 
     - name: Start application with Docker Compose
       shell: |
         cd /home/azureuser/shortifyaf
-        docker-compose --config /home/azureuser/.docker up -d
-      become: true
-      become_user: azureuser
+        docker-compose up -d
       environment:
         DOCKER_CLIENT_TIMEOUT: "120"
         COMPOSE_HTTP_TIMEOUT: "120"
         DOCKER_CONFIG: /home/azureuser/.docker
+      become: true
+      become_user: azureuser
 
     - name: Wait for services to start
       shell: |
@@ -247,8 +210,6 @@
       delay: 10
       become: true
       become_user: azureuser
-      environment:
-        DOCKER_CONFIG: /home/azureuser/.docker
 
     - name: Wait for backend port
       wait_for:
@@ -279,6 +240,8 @@
     - name: Show running containers
       command: docker ps
       register: container_status
+      become: true
+      become_user: azureuser
 
     - name: Display container status
       debug:
@@ -291,22 +254,10 @@
       register: compose_status
       become: true
       become_user: azureuser
-      environment:
-        DOCKER_CONFIG: /home/azureuser/.docker
 
     - name: Display docker compose status
       debug:
         var: compose_status.stdout
-
-    - name: Display repository contents
-      shell: |
-        cd /home/azureuser/shortifyaf
-        ls -la
-      register: repo_contents
-
-    - name: Show repository structure
-      debug:
-        var: repo_contents.stdout
 
     - name: Display application information
       debug:

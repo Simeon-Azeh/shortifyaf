@@ -18,7 +18,7 @@
     - name: Install Docker and dependencies using raw commands
       raw: |
         apt-get update -y
-        apt-get install -y docker.io docker-compose curl wget git
+        apt-get install -y docker.io docker-compose-plugin curl wget git
       args:
         warn: false
 
@@ -48,7 +48,7 @@
         content: |
           PORT=3001
           DATABASE_URL={{ database_url | default('') }}
-          FRONTEND_URL={{ frontend_url | default('http://localhost:5173') }}
+          FRONTEND_URL={{ frontend_url | default('http://68.221.143.187/') }}
           AZURE_CLIENT_ID={{ azure_client_id | default('') }}
           AZURE_CLIENT_SECRET={{ azure_client_secret | default('') }}
           AZURE_TENANT_ID={{ azure_tenant_id | default('') }}
@@ -75,16 +75,16 @@
                 - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
                 - AZURE_TENANT_ID=${AZURE_TENANT_ID}
               restart: unless-stopped
-              depends_on:
-                - frontend
 
             frontend:
               image: ${ACR_LOGIN_SERVER}/shortifyaf-frontend:latest
               ports:
                 - "80:5173"
               environment:
-                - VITE_API_URL=http://localhost:3001
+                - VITE_API_URL=http://backend:3001
               restart: unless-stopped
+              depends_on:
+                - backend
         owner: azureuser
         group: azureuser
         mode: "0644"
@@ -95,8 +95,8 @@
         username: "{{ azure_client_id }}"
         password: "{{ azure_client_secret }}"
 
-    - name: Pull and start containers with docker-compose
-      community.docker.docker_compose:
+    - name: Pull and start containers with docker compose V2
+      community.docker.docker_compose_v2:
         project_src: /home/azureuser/shortifyaf
         files:
           - docker-compose.yml
@@ -123,3 +123,11 @@
     - name: Display application status
       debug:
         msg: "Application deployed successfully! Backend running on port 3001, Frontend on port 80"
+
+    - name: Show running containers
+      command: docker ps
+      register: container_status
+
+    - name: Display container status
+      debug:
+        var: container_status.stdout

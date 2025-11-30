@@ -145,9 +145,8 @@
       args:
         warn: false
 
-    - name: Simple Docker login with service principal
-      shell: |
-        echo "{{ azure_client_secret }}" | docker login {{ acr_login_server }} --username {{ azure_client_id }} --password-stdin
+    - name: Login to Azure Container Registry
+      shell: docker login {{ acr_login_server }} --username {{ acr_admin_username }} --password {{ acr_admin_password }}
       environment:
         DOCKER_CONFIG: /home/azureuser/.docker
       become: true

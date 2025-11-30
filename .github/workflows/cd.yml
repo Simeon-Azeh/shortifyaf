@@ -148,6 +148,14 @@ jobs:
             set -e
             cd /home/azureuser/shortifyaf
             
+            # Ensure Docker config prevents credential storage
+            mkdir -p ~/.docker
+            echo '{"credsStore":"","credHelpers":{}}' > ~/.docker/config.json
+            
+            # Set environment to prevent credential storage
+            export DOCKER_CONFIG=~/.docker
+            export DOCKER_CREDENTIAL_HELPERS=
+            
             # Login to ACR
             echo "${{ steps.tf-outputs.outputs.acr_admin_password }}" | docker login ${{ steps.tf-outputs.outputs.acr_login_server }} --username ${{ steps.tf-outputs.outputs.acr_admin_username }} --password-stdin
             

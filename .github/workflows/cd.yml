@@ -143,44 +143,60 @@ jobs:
           ssh -i ~/.ssh/id_rsa \
             -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa azureuser@${{ steps.tf-outputs.outputs.bastion_public_ip }}" \
             -o StrictHostKeyChecking=no \
-            -o UserKnownHostsFile=/dev/null \
             azureuser@${{ steps.tf-outputs.outputs.app_private_ip }} << 'EOF'
             set -e
             cd /home/azureuser/shortifyaf
             
-            # Completely disable Docker credential storage
+            # Configure Docker to avoid credential store issues
             mkdir -p ~/.docker
-            echo '{"auths":{},"credsStore":"","credHelpers":{},"experimental":"disabled"}' > ~/.docker/config.json
-            export DOCKER_CONFIG=~/.docker
-            export DOCKER_CREDS_STORE=
-            export DOCKER_CREDENTIAL_HELPERS=
+            cat > ~/.docker/config.json << 'DOCKERCONFIG'
+            {
+              "auths": {
+                "${{ steps.tf-outputs.outputs.acr_login_server }}": {
+                  "auth": "$(echo -n ${{ steps.tf-outputs.outputs.acr_admin_username }}:${{ steps.tf-outputs.outputs.acr_admin_password }} | base64 -w 0)"
+                }
+              },
+              "credsStore": "",
+              "credHelpers": {}
+            }
+            DOCKERCONFIG
             
-            # Remove any existing credential helpers
-            apt-get remove -y --purge docker-credential-* golang-docker-credential-helpers 2>/dev/null || true
+            # Alternative login method (use one or the other)
+            # echo "${{ steps.tf-outputs.outputs.acr_admin_password }}" | \
+            #   docker login ${{ steps.tf-outputs.outputs.acr_login_server }} \
+            #   --username ${{ steps.tf-outputs.outputs.acr_admin_username }} \
+            #   --password-stdin
             
-            # Login to ACR with explicit config and no credential storage
-            echo "${{ steps.tf-outputs.outputs.acr_admin_password }}" | docker --config ~/.docker login ${{ steps.tf-outputs.outputs.acr_login_server }} --username ${{ steps.tf-outputs.outputs.acr_admin_username }} --password-stdin
+            # Pull and deploy
+            docker-compose pull
+            docker-compose up -d
             
-            # Pull images with explicit config
-            DOCKER_CONFIG=~/.docker docker-compose pull
-            
-            # Start services
-            DOCKER_CONFIG=~/.docker docker-compose up -d
-            
-            # Wait for services
+            # Wait for services with better error handling
             echo "Waiting for services to start..."
             for i in {1..12}; do
-              if DOCKER_CONFIG=~/.docker docker-compose ps --services --filter "status=running" | grep -q "backend" && DOCKER_CONFIG=~/.docker docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
-                echo "Services are running"
+              if docker-compose ps --services --filter "status=running" | grep -q "backend" && \
+                 docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
+                echo "✓ All services are running"
                 break
               fi
-              echo "Waiting... ($i/12)"
+              echo "Waiting for services... ($i/12)"
               sleep 10
             done
             
-            # Show status
-            DOCKER_CONFIG=~/.docker docker-compose ps
-            docker ps
+            # Final status check
+            echo "Current container status:"
+            docker-compose ps
+            
+            # Additional health checks
+            echo "Checking service health..."
+            if docker-compose ps --services --filter "status=running" | grep -q "backend" && \
+               docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
+              echo "✓ Deployment completed successfully"
+            else
+              echo "✗ Some services failed to start"
+              docker-compose logs
+              exit 1
+            fi
           EOF
 
       - name: Health check application
@@ -193,13 +209,19 @@ jobs:
       - name: Verify backend service
         run: |
           set -e
+          echo "Performing health checks on backend service..."
           for i in {1..10}; do
             if curl -f -s http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health > /dev/null; then
               echo "✓ Backend service is healthy"
+              echo "Backend response:"
+              curl -s http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health | head -c 100
+              echo ""
               exit 0
             fi
-            echo "Waiting for backend... ($i/10)"
+            echo "Waiting for backend to become healthy... ($i/10)"
             sleep 10
           done
-          echo "✗ Backend service did not become healthy"
+          echo "✗ Backend service did not become healthy within the expected time"
+          echo "Debug information:"
+          curl -v http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001/health || true
           exit 1

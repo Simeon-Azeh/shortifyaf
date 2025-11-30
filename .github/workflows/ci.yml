@@ -15,7 +15,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:14
+        image: postgres:15   # FIXED: 14 fails on GitHub runners
         ports:
           - 5432:5432
         env:
@@ -60,14 +60,16 @@ jobs:
         run: |
           docker build --pull -t shortifyaf-backend ./backend
 
-      - name: Scan Docker image with Trivy
+      - name: Scan backend Docker image with Trivy
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: "image"
-          scan-ref: "shortifyaf-backend"
+          image-ref: "shortifyaf-backend"
           format: "table"
-          severity: "CRITICAL"
+          severity: "CRITICAL,HIGH"
           exit-code: "1"
+          ignore-unfixed: true
+
 
   frontend-ci:
     runs-on: ubuntu-latest
@@ -142,5 +144,4 @@ jobs:
       - name: Run Checkov (Terraform Security Scan)
         run: |
           pip install checkov
-          checkov --version
           checkov -d terraform/ --framework terraform --output cli --compact --hard-fail-on HIGH

@@ -148,27 +148,29 @@ jobs:
             set -e
             cd /home/azureuser/shortifyaf
             
-            # Ensure Docker config prevents credential storage
+            # Completely disable Docker credential storage
             mkdir -p ~/.docker
-            echo '{"credsStore":"","credHelpers":{}}' > ~/.docker/config.json
-            
-            # Set environment to prevent credential storage
+            echo '{"auths":{},"credsStore":"","credHelpers":{},"experimental":"disabled"}' > ~/.docker/config.json
             export DOCKER_CONFIG=~/.docker
+            export DOCKER_CREDS_STORE=
             export DOCKER_CREDENTIAL_HELPERS=
             
-            # Login to ACR
-            echo "${{ steps.tf-outputs.outputs.acr_admin_password }}" | docker login ${{ steps.tf-outputs.outputs.acr_login_server }} --username ${{ steps.tf-outputs.outputs.acr_admin_username }} --password-stdin
+            # Remove any existing credential helpers
+            apt-get remove -y --purge docker-credential-* golang-docker-credential-helpers 2>/dev/null || true
             
-            # Pull images
-            docker-compose pull
+            # Login to ACR with explicit config and no credential storage
+            echo "${{ steps.tf-outputs.outputs.acr_admin_password }}" | docker --config ~/.docker login ${{ steps.tf-outputs.outputs.acr_login_server }} --username ${{ steps.tf-outputs.outputs.acr_admin_username }} --password-stdin
+            
+            # Pull images with explicit config
+            DOCKER_CONFIG=~/.docker docker-compose pull
             
             # Start services
-            docker-compose up -d
+            DOCKER_CONFIG=~/.docker docker-compose up -d
             
             # Wait for services
             echo "Waiting for services to start..."
             for i in {1..12}; do
-              if docker-compose ps --services --filter "status=running" | grep -q "backend" && docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
+              if DOCKER_CONFIG=~/.docker docker-compose ps --services --filter "status=running" | grep -q "backend" && DOCKER_CONFIG=~/.docker docker-compose ps --services --filter "status=running" | grep -q "frontend"; then
                 echo "Services are running"
                 break
               fi
@@ -177,7 +179,7 @@ jobs:
             done
             
             # Show status
-            docker-compose ps
+            DOCKER_CONFIG=~/.docker docker-compose ps
             docker ps
           EOF
 

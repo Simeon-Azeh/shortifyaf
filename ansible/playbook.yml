@@ -129,8 +129,7 @@
         az login --service-principal -u "{{ azure_client_id }}" -p "{{ azure_client_secret }}" --tenant "{{ azure_tenant_id }}" --output none
         acr_name="{{ acr_login_server.split('.')[0] }}"
         az acr login --name "$acr_name" --output none
-      args:
-        warn: false
+      warn: false
       when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined and acr_login_server is defined
 
     - name: Pull Docker images

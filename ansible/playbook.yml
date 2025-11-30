@@ -101,13 +101,10 @@
           - "Docker Version: {{ docker_version.stdout }}"
           - "Docker Compose Version: {{ docker_compose_version.stdout }}"
 
-    - name: Create application directory
+    - name: Remove existing application directory
       file:
         path: /home/azureuser/shortifyaf
-        state: directory
-        owner: azureuser
-        group: azureuser
-        mode: "0755"
+        state: absent
 
     - name: Clone repository
       git:

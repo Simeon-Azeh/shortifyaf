@@ -109,7 +109,7 @@ jobs:
       - name: Build and push frontend image
         run: |
           docker build -t ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest \
-            --build-arg VITE_API_URL=http://backend:3001 \
+            --build-arg VITE_API_URL=http://${{ steps.tf-outputs.outputs.app_public_ip }}:3001 \
             ./frontend
           docker push ${{ steps.tf-outputs.outputs.acr_login_server }}/shortifyaf-frontend:latest
 

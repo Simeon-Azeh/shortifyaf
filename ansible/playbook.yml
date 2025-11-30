@@ -89,12 +89,87 @@
         group: azureuser
         mode: "0644"
 
-    - name: Login to Azure Container Registry
-      docker_login:
-        registry: "{{ acr_login_server }}"
-        username: "{{ azure_client_id }}"
-        password: "{{ azure_client_secret }}"
+    - name: Install docker-compose standalone binary (compat for scripts using docker-compose)
+      get_url:
+        url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64"
+        dest: /usr/local/bin/docker-compose
+        mode: "0755"
+      args:
+        warn: false
 
+    - name: Create symlink for docker-compose (hyphen) to ensure compatibility
+      file:
+        src: /usr/local/bin/docker-compose
+        dest: /usr/bin/docker-compose
+        state: link
+
+    - name: Install Azure CLI prerequisites
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - apt-transport-https
+          - lsb-release
+          - gnupg
+        state: present
+        update_cache: yes
+
+    - name: Add Microsoft apt key
+      apt_key:
+        url: https://packages.microsoft.com/keys/microsoft.asc
+        state: present
+
+    - name: Add Azure CLI apt repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main"
+        state: present
+
+    - name: Install Azure CLI
+      apt:
+        name: azure-cli
+        state: present
+        update_cache: yes
+
+    - name: Login to Azure using Service Principal (for ACR auth)
+      shell: |
+        az login --service-principal -u "{{ azure_client_id }}" -p "{{ azure_client_secret }}" --tenant "{{ azure_tenant_id }}" --output none
+      args:
+        warn: false
+      when: azure_client_id is defined and azure_client_secret is defined and azure_tenant_id is defined
+
+    - name: Get ACR name from login server
+      set_fact:
+        acr_name: "{{ acr_login_server.split('.')[0] }}"
+      when: acr_login_server is defined
+
+    - name: Login to ACR as root using az (stores credentials for root user)
+      shell: |
+        set -e
+        TOKEN=$(az acr login --name "{{ acr_name }}" --expose-token --output tsv --query accessToken)
+        echo "$TOKEN" | docker login {{ acr_login_server }} --username 00000000-0000-0000-0000-000000000000 --password-stdin
+      args:
+        warn: false
+      become: yes
+      when: acr_name is defined
+
+    - name: If az acr login fails, use admin credentials to docker login (fallback)
+      block:
+        - name: Get ACR admin username
+          shell: az acr credential show -n "{{ acr_name }}" --query username -o tsv
+          register: acr_admin_user
+          changed_when: false
+        - name: Get ACR admin password
+          shell: az acr credential show -n "{{ acr_name }}" --query passwords[0].value -o tsv
+          register: acr_admin_pass
+          changed_when: false
+        - name: Login to docker with ACR admin credentials as root
+          shell: echo "{{ acr_admin_pass.stdout }}" | docker login {{ acr_login_server }} --username {{ acr_admin_user.stdout }} --password-stdin
+          become: yes
+      rescue:
+        - name: Debug register fallback failure
+          debug:
+            msg: "Failed to login to ACR via admin credentials"
+      when: acr_name is defined
     - name: Pull and start containers with docker compose V2
       community.docker.docker_compose_v2:
         project_src: /home/azureuser/shortifyaf
@@ -111,14 +186,32 @@
         timeout: 60
 
     - name: Check application status
-      uri:
-        url: http://localhost:3001/health
-        method: GET
-        status_code: 200
-      register: health_check
-      until: health_check.status == 200
-      retries: 10
-      delay: 5
+      block:
+        - name: Request backend health endpoint
+          uri:
+            url: http://localhost:3001/health
+            method: GET
+            status_code: 200
+          register: health_check
+          until: health_check.status == 200
+          retries: 10
+          delay: 5
+      rescue:
+        - name: Show backend logs to debug startup failure
+          shell: docker compose -f /home/azureuser/shortifyaf/docker-compose.yml logs backend --no-color || docker logs $(docker ps -q --filter "name=shortifyaf-backend")
+          register: backend_logs
+        - name: Display backend logs
+          debug:
+            var: backend_logs.stdout
+        - name: Show container ps
+          command: docker ps -a
+          register: all_containers
+        - name: Display container ps
+          debug:
+            var: all_containers.stdout
+        - name: Fail the play with helpful message
+          fail:
+            msg: "Backend health check failed; see logs above for details"
 
     - name: Display application status
       debug:

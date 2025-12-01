@@ -3,10 +3,10 @@ terraform {
   required_version = ">= 1.5.0"
 
   backend "azurerm" {
-    resource_group_name  = "shortifyaf-rg"       # your existing resource group
-    storage_account_name = "shortifyaftfstate"   # your storage account
-    container_name       = "tfstate"             # blob container in the storage account
-    key                  = "terraform.tfstate"   # the state filename
+    resource_group_name  = "shortifyaf-rg"      
+    storage_account_name = "shortifyaftfstate"   
+    container_name       = "tfstate"             
+    key                  = "terraform.tfstate"   
   }
 }
 

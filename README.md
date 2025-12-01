@@ -1,6 +1,9 @@
 # ShortifyAF
 **A simple URL shortener built for Africa's digital ecosystem**
 
+## Demo Video
+ **[Watch the Demo](https://youtu.be/9kevo8rPboU)** - See ShortifyAF in action!
+
 ## African Context
 
 In Africa's rapidly growing digital economy, small businesses, entrepreneurs, and social media marketers face a common challenge: sharing long, complex URLs that look unprofessional and are difficult to remember. Whether it's WhatsApp business links, mobile money payment URLs, or product pages, these lengthy links create friction in digital communication and commerce.
